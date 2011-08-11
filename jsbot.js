@@ -8,6 +8,7 @@ var JSBot = Class.create({
         this.host = host;
         this.port = port;
         this.encoding = 'utf8';
+        this.lineBuffer = '';
         this.onReady = onReady;
         this.connect();
     },
@@ -23,13 +24,16 @@ var JSBot = Class.create({
         }.bind(this));
 
         this.conn.addListener('data', function(chunk) {
-            console.log(chunk);
+            this.lineBuffer += chunk;
+            if(chunk.endsWith('\r\n')) {
+                this.parse();
+                this.lineBuffer = '';
+            }
         }.bind(this));
     },
 
     send: function() {
         message = [].splice.call(arguments, 0).join(' ');
-        console.log(message);
         message += '\r\n';
         this.conn.write(message, this.encoding);
     },
@@ -40,6 +44,18 @@ var JSBot = Class.create({
 
     say: function(channel, message) {
         this.send('PRIVMSG', channel, ':' + message);
+    },
+
+    parse: function() {
+        if(this.lineBuffer.startsWith('PING')) {
+            this.pong(this.lineBuffer);
+        }
+
+        console.log('Got line: ' + this.lineBuffer);
+    },
+
+    pong: function(message) {
+        this.send('PONG', ':' + message.split(':')[1]);
     }
 });
 
