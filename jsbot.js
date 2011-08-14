@@ -10,6 +10,9 @@ var JSBot = Class.create({
         this.encoding = 'utf8';
         this.lineBuffer = '';
         this.onReady = onReady;
+        this.events = {
+            'JOIN': null
+        };
         this.connect();
     },
 
@@ -49,13 +52,41 @@ var JSBot = Class.create({
     parse: function() {
         if(this.lineBuffer.startsWith('PING')) {
             this.pong(this.lineBuffer);
-        }
+        } else {
+            var message = this.lineBuffer.match(/(?:(:[^\s]+) )?([^\s]+) (.+)/);
+            var prefix = message[1];
+            var command = message[2];
+            var parameters = message[3];
+            var data;
 
-        console.log('Got line: ' + this.lineBuffer);
+            // TODO: Further regex to avoid all this stringwork?
+            switch(command) {
+                case 'JOIN':
+                    data = {
+                        'channel': parameters.split(':')[1],
+                        'user': prefix.split('!')[0].substring(1)
+                    };
+                    break;
+            }
+
+            if(Object.isFunction(this.events[command])) {
+                this.events[command](data);
+            }
+
+            // DEBUG
+            //console.log('line: ' + message[0]);
+            //console.log('prefix: ' + message[1]);
+            //console.log('command: ' + message[2]);
+            //console.log('params: ' + message[3]);
+        }
     },
 
     pong: function(message) {
         this.send('PONG', ':' + message.split(':')[1]);
+    },
+
+    addListener: function(index, func) {
+        this.events[index] = func;
     }
 });
 
