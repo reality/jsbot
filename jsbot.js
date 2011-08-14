@@ -12,7 +12,8 @@ var JSBot = Class.create({
         this.onReady = onReady;
         this.events = {
             'JOIN': null,
-            'PART': null
+            'PART': null,
+            'PRIVMSG': null
         };
         this.connect();
     },
@@ -58,15 +59,20 @@ var JSBot = Class.create({
             var prefix = message[1];
             var command = message[2];
             var parameters = message[3];
-            var data;
+            var data = {
+                'raw': message,
+                'user': prefix.split('!')[0].substring(1)
+            };
 
             // TODO: Further regex to avoid all this stringwork?
             switch(command) {
                 case 'JOIN': case 'PART':
-                    data = {
-                        'channel': parameters.split(':')[1],
-                        'user': prefix.split('!')[0].substring(1)
-                    };
+                    data['channel'] = parameters.split(':')[1];
+                    break;
+
+                case 'PRIVMSG':
+                    data['channel'] = parameters.split(' ')[0];
+                    data['message'] = parameters.split(':')[1]
                     break;
             }
 

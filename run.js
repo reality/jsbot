@@ -12,3 +12,7 @@ instance.addListener('JOIN', function(data) {
 instance.addListener('PART', function(data) {
     instance.say(data['channel'], 'Life is pointless without ' + data['user'] + ' here :(');
 });
+
+instance.addListener('PRIVMSG', function(data) {
+    instance.say(data['channel'], data['user'] + ' said: ' + data['message']);
+});
