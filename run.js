@@ -8,3 +8,7 @@ var instance = jsbot.createJSBot('jsbot', 'a.server.net', 6667, function() {
 instance.addListener('JOIN', function(data) {
     instance.say(data['channel'], 'Life is slightly better with ' + data['user'] + ' here :)');
 });
+
+instance.addListener('PART', function(data) {
+    instance.say(data['channel'], 'Life is pointless without ' + data['user'] + ' here :(');
+});

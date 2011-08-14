@@ -11,7 +11,8 @@ var JSBot = Class.create({
         this.lineBuffer = '';
         this.onReady = onReady;
         this.events = {
-            'JOIN': null
+            'JOIN': null,
+            'PART': null
         };
         this.connect();
     },
@@ -61,7 +62,7 @@ var JSBot = Class.create({
 
             // TODO: Further regex to avoid all this stringwork?
             switch(command) {
-                case 'JOIN':
+                case 'JOIN': case 'PART':
                     data = {
                         'channel': parameters.split(':')[1],
                         'user': prefix.split('!')[0].substring(1)
