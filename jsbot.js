@@ -47,6 +47,10 @@ var JSBot = Class.create({
         this.send('JOIN', channel);
     },
 
+    part: function(channel) {
+        this.send('PART', channel);
+    },
+
     say: function(channel, message) {
         this.send('PRIVMSG', channel, ':' + message);
     },
@@ -71,8 +75,9 @@ var JSBot = Class.create({
                     break;
 
                 case 'PRIVMSG':
+                    var colonSplit = parameters.split(':');
                     data['channel'] = parameters.split(' ')[0];
-                    data['message'] = parameters.split(':')[1]
+                    data['message'] = colonSplit.slice(1, colonSplit.length).join(':');
                     break;
             }
 
@@ -81,10 +86,10 @@ var JSBot = Class.create({
             }
 
             // DEBUG
-            //console.log('line: ' + message[0]);
-            //console.log('prefix: ' + message[1]);
-            //console.log('command: ' + message[2]);
-            //console.log('params: ' + message[3]);
+            console.log('line: ' + message[0]);
+            console.log('prefix: ' + message[1]);
+            console.log('command: ' + message[2]);
+            console.log('params: ' + message[3]);
         }
     },
 
