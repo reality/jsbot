@@ -11,9 +11,9 @@ var JSBot = Class.create({
         this.lineBuffer = '';
         this.onReady = onReady;
         this.events = {
-            'JOIN': null,
-            'PART': null,
-            'PRIVMSG': null
+            'JOIN': [],
+            'PART': [],
+            'PRIVMSG': []
         };
         this.connect();
     },
@@ -81,8 +81,12 @@ var JSBot = Class.create({
                     break;
             }
 
-            if(Object.isFunction(this.events[command])) {
-                this.events[command](data);
+            if(command in this.events) {
+                this.events[command].each(function(eventFunc) {
+                    if(Object.isFunction(eventFunc)) {
+                        eventFunc(data);
+                    }
+                });
             }
 
             // DEBUG
@@ -98,7 +102,7 @@ var JSBot = Class.create({
     },
 
     addListener: function(index, func) {
-        this.events[index] = func;
+        this.events[index].push(func);
     }
 });
 
