@@ -13,6 +13,7 @@ var JSBot = Class.create({
         this.events = {
             'JOIN': [],
             'PART': [],
+            'KICK': [],
             'PRIVMSG': []
         };
         this.connect();
@@ -78,6 +79,11 @@ var JSBot = Class.create({
                     var colonSplit = parameters.split(':');
                     data['channel'] = parameters.split(' ')[0];
                     data['message'] = colonSplit.slice(1, colonSplit.length).join(':');
+                    break;
+
+                case 'KICK':
+                    data['channel'] = parameters.split(' ')[0];
+                    data['kickee'] = parameters.split(' ')[1];
                     break;
             }
 
