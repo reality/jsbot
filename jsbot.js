@@ -39,7 +39,7 @@ JSBot.prototype.connect = function() {
     this.conn.addListener('connect', function() {
         this.send('NICK', this.nick);
         this.send('USER', this.nick, '0', '*', this.nick);
-        this.say(nickserv, 'identify ' + password);
+        this.say(this.nickserv, 'identify ' + this.password);
         this.onReady();
     }.bind(this));
 
