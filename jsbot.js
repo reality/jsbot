@@ -149,6 +149,6 @@ JSBot.prototype.removeListeners = function() {
     };
 };
 
-exports.createJSBot = function(nick, host, port, owner, onReady) {
-    return new JSBot(nick, host, port, owner, onReady);
+exports.createJSBot = function(nick, host, port, owner, onReady, nickserv, password) {
+    return new JSBot(nick, host, port, owner, onReady, nickserv, password);
 };
