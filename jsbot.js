@@ -34,6 +34,7 @@ JSBot.prototype.connect = function() {
     this.conn = net.createConnection(this.port, this.host);
     this.conn.setTimeout(60 * 60 * 1000);
     this.conn.setEncoding(this.encoding);
+    this.conn.setKeepAlive(enable=true, 10000);
 
     this.conn.addListener('connect', function() {
         this.send('NICK', this.nick);
