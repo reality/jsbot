@@ -1,10 +1,12 @@
 var sys = require('sys');
 var net = require('net');
 
-var JSBot = function(nick, host, port, owner, onReady) {
+var JSBot = function(nick, host, port, owner, onReady, nickserv, password) {
     this.nick = nick;
     this.host = host;
     this.port = port;
+    this.nickserv = nickserv;
+    this.password = password;
     this.owner = owner;
     this.channels = [];
     this.commands = {};
@@ -36,6 +38,7 @@ JSBot.prototype.connect = function() {
     this.conn.addListener('connect', function() {
         this.send('NICK', this.nick);
         this.send('USER', this.nick, '0', '*', this.nick);
+        this.say(nickserv, 'identify ' + password);
         this.onReady();
     }.bind(this));
 
