@@ -12,6 +12,7 @@ var JSBot = function(nick, host, port, owner, onReady, nickserv, password) {
     this.commands = {};
     this.encoding = 'utf8';
     this.lineBuffer = '';
+    this.netBuffer = '';
     this.onReady = onReady;
     this.events = {
         'JOIN': [],
@@ -44,10 +45,13 @@ JSBot.prototype.connect = function() {
     }.bind(this));
 
     this.conn.addListener('data', function(chunk) {
-        this.lineBuffer += chunk;
-        if(chunk.endsWith('\r\n')) {
+	this.netBuffer += chunk;
+        var ind;
+        while( (ind = this.netBuffer.indexOf( '\r\n' )) != -1 )
+        {
+            this.lineBuffer = this.netBuffer.substring(0, ind);
             this.parse();
-            this.lineBuffer = '';
+            this.netBuffer = this.netBuffer.substring(ind+2);
         }
     }.bind(this));
 
