@@ -102,7 +102,11 @@ JSBot.prototype.parse = function() {
 
         // TODO: Further regex to avoid all this stringwork?
         switch(command) {
-            case 'JOIN': case 'PART': case 'MODE':
+            case 'JOIN':
+                data['channel'] = parameters.split(' ')[0];
+                break;
+
+            case 'PART': case 'MODE':
                 data['channel'] = parameters.split(':')[1];
                 break;
 
