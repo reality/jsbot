@@ -102,8 +102,15 @@ JSBot.prototype.parse = function() {
 
         // TODO: Further regex to avoid all this stringwork?
         switch(command) {
-            case 'JOIN': case 'PART': case 'MODE':
-                data['channel'] = parameters.split(':')[1];
+            case 'JOIN': case 'PART':
+                data['channel'] = parameters.split(' ')[0];
+                data['message'] = parameters.split(':')[1];  // only PARTs have this, so it'll be undefined in JOINs
+                break;
+
+            case 'MODE':
+                data['channel'] = parameters.split(' ')[0];
+                data['modeChanges'] = parameters.split(' ')[1];
+                data['targetUser'] = parameters.split(' ')[2];
                 break;
 
             case 'PRIVMSG':
