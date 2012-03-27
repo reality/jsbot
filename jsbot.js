@@ -129,7 +129,7 @@ JSBot.prototype.parse = function() {
             this.events[command].each(function(eventFunc) {
                 if(Object.isFunction(eventFunc)) {
                     try {
-                        eventFunc.call(this.owner, data);
+                        eventFunc.call(this.owner, data, command);
                     } catch(err) {
                         console.log('ERROR: ' + eventFunc + '\n' + err);
                     }
@@ -148,7 +148,12 @@ JSBot.prototype.pong = function(message) {
 };
 
 JSBot.prototype.addListener = function(index, func) {
-    this.events[index].push(func);
+    if(!(index instanceof Array)) {
+        index = [index];
+    }
+    index.each((function(eventType) {
+        this.events[eventType].push(func);
+    }).bind(this));
 };
 
 JSBot.prototype.removeListeners = function() {
