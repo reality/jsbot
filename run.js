@@ -1,18 +1,12 @@
 jsbot = require('./jsbot');
 
-var instance = jsbot.createJSBot('jsbot', 'a.server.net', 6667, function() {
-    instance.join('#channel');
-    instance.say('#channel', 'javascript is the future. python bots are old and rusty.');
+var instance = jsbot.createJSBot('jsbot');
+
+instance.addConnection('aberwiki', 'irc.aberwiki.org', 6667, 'reality', function(event) {
+    instance.join(event, '#42'); 
 }.bind(this));
 
-instance.addListener('JOIN', function(data) {
-    instance.say(data['channel'], 'Life is slightly better with ' + data['user'] + ' here :)');
+instance.addListener('JOIN', function(event) {
+    event.reply('I love ' + event.user);
 });
 
-instance.addListener('PART', function(data) {
-    instance.say(data['channel'], 'Life is pointless without ' + data['user'] + ' here :(');
-});
-
-instance.addListener('PRIVMSG', function(data) {
-    instance.say(data['channel'], data['user'] + ' said: ' + data['message']);
-});
