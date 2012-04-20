@@ -14,4 +14,6 @@ instance.addListener('JOIN', 'join', function(event) {
     event.reply('I love ' + event.user);
 });
 
+instance.ignoreTag('jsbottest', 'join');
+
 instance.connectAll();
