@@ -10,6 +10,7 @@ require('./snippets');
 var JSBot = function(nick) {
     this.nick = nick;
     this.connections = {};
+    this.ignores = {};
 
     this.events = {
         'JOIN': [],
@@ -95,21 +96,34 @@ JSBot.prototype.parse = function(connection, input) {
         }
 
         if(command in this.events) {
-            this.events[command].each(function(eventFunc) {
-                if(Object.isFunction(eventFunc)) {
+            this.events[command].each(function(listener) {
+                var eventFunc = listener.listener;
+                if(Object.isFunction(eventFunc) && (this.ignores.hasOwnProperty(event.user) && 
+                        this.ignores[event.user].include(listener.tag)) == false) {
                     try {
                         eventFunc.call(this, event);
                     } catch(err) {
                         console.log('ERROR: ' + eventFunc + '\n' + err);
                     }
                 }
-            });
+            }.bind(this));
         }
 
         // DEBUG
         console.log('line: ' + message[0]);
     }
 };
+
+/**
+ * Add a listener tag for a user to ignore.
+ */
+JSBot.prototype.ignoreTag = function(user, tag) {
+    if(!this.ignores.hasOwnProperty(user)) {
+        this.ignores[user] = [];
+    }
+
+    this.ignores[user].push(tag);
+}
 
 /**
  * Say something in a given server and channel.
@@ -133,13 +147,18 @@ JSBot.prototype.reply = function(event, msg) {
 /**
  * Add a listener function for a given event.
  */
-JSBot.prototype.addListener = function(index, func) {
+JSBot.prototype.addListener = function(index, tag, func) {
     if(!(index instanceof Array)) {
         index = [index];
     }
 
+    var listener = {
+        'listener': func,
+        'tag': tag
+    };
+
     index.each((function(eventType) {
-        this.events[eventType].push(func);
+        this.events[eventType].push(listener);
     }).bind(this));
 };
 
