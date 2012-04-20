@@ -54,7 +54,7 @@ JSBot.prototype.parse = function(connection, input) {
     event.server = connection.name;
 
     if(input.startsWith('PING')) {
-        connection.pong(connection.name, input);
+        this.connections[connection.name].pong(input);
     } else {
         var message = input.match(/(?:(:[^\s]+) )?([^\s]+) (.+)/);
         var prefix = message[1];
@@ -203,8 +203,8 @@ Connection.prototype.send = function() {
     this.conn.write(message, this.encoding);
 };
 
-Connection.prototype.pong = function(server, message) {
-    this.connections[server].send('PONG', ':' + message.split(':')[1]);
+Connection.prototype.pong = function(message) {
+    this.send('PONG', ':' + message.split(':')[1]);
 };
 
 ///////////////////////////////////////////////////////////////////////////////
