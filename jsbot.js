@@ -1,4 +1,5 @@
 var net = require('net');
+require('./snippets');
 
 /**
  * Javascript IRC bot library! Deal with it.
@@ -23,7 +24,7 @@ var JSBot = function(nick) {
  * Add a new server connection.
  */
 JSBot.prototype.addConnection = function(name, host, port, owner, onReady, nickserv, password) {
-    this.connections[name] = new Connection(name, host, port, owner, onReady,
+    this.connections[name] = new Connection(name, this, host, port, owner, onReady,
             nickserv, password);
 };
 
@@ -39,51 +40,57 @@ JSBot.prototype.connect = function(name) {
  */
 JSBot.prototype.connectAll = function() {
     for(var name in this.connections) {
-        this.connections[name].connect();
+        if(this.connections.hasOwnProperty(name)) {
+            this.connections[name].connect();
+        }
     }
 };
 
-JSBot.prototype.parse = function() {
-    if(this.lineBuffer.startsWith('PING')) {
-        this.pong(this.lineBuffer);
+/**
+ * Take some input and populate an event object.
+ */
+JSBot.prototype.parse = function(connection, input) {
+    var event = new Event(this);
+    event.server = connection.name;
+
+    if(input.startsWith('PING')) {
+        connection.pong(input);
     } else {
-        var message = this.lineBuffer.match(/(?:(:[^\s]+) )?([^\s]+) (.+)/);
+        var message = input.match(/(?:(:[^\s]+) )?([^\s]+) (.+)/);
         var prefix = message[1];
         var command = message[2];
         var parameters = message[3];
-        try {
-            var data = {
-                'raw': message,
-                'user': prefix.split('!')[0].substring(1)
-            };
+
+        try { // This could be nicer
+            event.user = prefix.split('!')[0].substring(1);
         } catch(err) {
-            var data = {
-                'raw': message,
-                'user': 'none'
-            };
+            event.user = false;
         }
+
+        event.raw = message;
+        event.action = command;
 
         switch(command) {
             case 'JOIN': case 'PART':
-                data['channel'] = parameters.split(':')[1];
-                data['message'] = parameters.split(':')[1];  // only PARTs have this, so it'll be undefined in JOINs
+                event.channel = parameters.split(':')[1];
+                event.message = parameters.split(':')[1];  // only PARTs have this, so it'll be undefined in JOINs
                 break;
 
-            case 'MODE':
-                data['channel'] = parameters.split(' ')[0];
-                data['modeChanges'] = parameters.split(' ')[1];
-                data['targetUser'] = parameters.split(' ')[2];
+            case 'MODE': // This is probably broken
+                event.channel = parameters.split(' ')[0];
+                event.modeChanges = parameters.split(' ')[1];
+                event.targetUser = parameters.split(' ')[2];
                 break;
 
             case 'PRIVMSG':
                 var colonSplit = parameters.split(':');
-                data['channel'] = parameters.split(' ')[0];
-                data['message'] = colonSplit.slice(1, colonSplit.length).join(':');
+                event.channel = parameters.split(' ')[0];
+                event.message = colonSplit.slice(1, colonSplit.length).join(':');
                 break;
 
             case 'KICK':
-                data['channel'] = parameters.split(' ')[0];
-                data['kickee'] = parameters.split(' ')[1];
+                event.channel = parameters.split(' ')[0];
+                event.kickee = parameters.split(' ')[1];
                 break;
         }
 
@@ -91,7 +98,7 @@ JSBot.prototype.parse = function() {
             this.events[command].each(function(eventFunc) {
                 if(Object.isFunction(eventFunc)) {
                     try {
-                        eventFunc.call(this.owner, data, command);
+                        eventFunc.call(this, event);
                     } catch(err) {
                         console.log('ERROR: ' + eventFunc + '\n' + err);
                     }
@@ -108,7 +115,7 @@ JSBot.prototype.parse = function() {
  * Reply to an event with a PRIVMSG. Called by the Event.reply.
  */
 JSBot.prototype.reply = function(event, msg) {
-    this.connections[data.server].send('PRIVMSG', event.channel, ':' + msg);
+    this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
 };
 
 /**
@@ -122,6 +129,10 @@ JSBot.prototype.addListener = function(index, func) {
     index.each((function(eventType) {
         this.events[eventType].push(func);
     }).bind(this));
+};
+
+JSBot.prototype.join = function(event, channel) {
+    this.connections[event.server].send('JOIN', channel);
 };
 
 /**
@@ -142,7 +153,9 @@ JSBot.prototype.removeListeners = function() {
 /**
  * Single connection to an IRC server. Managed by the JSBot object.
  */
-var Connection = function(host, port, owner, onReady, nickserv, password) {
+var Connection = function(name, instance, host, port, owner, onReady, nickserv, password) {
+    this.name = name;
+    this.instance = instance;
     this.host = host;
     this.port = port;
     this.owner = owner;
@@ -164,10 +177,13 @@ Connection.prototype.connect = function() {
     this.conn.setKeepAlive(enable=true, 10000);
 
     this.conn.addListener('connect', function() {
-        this.send('NICK', this.nick);
-        this.send('USER', this.nick, '0', '*', this.nick);
-        this.say(this.nickserv, 'identify ' + this.password);
-        this.onReady();
+        this.send('NICK', this.instance.nick);
+        this.send('USER', this.instance.nick, '0', '*', this.instance.nick);
+        //this.say(this.nickserv, 'identify ' + this.password);
+
+        var readyEvent = new Event(this.instance);
+        readyEvent.server = this.name;
+        this.onReady(readyEvent);
     }.bind(this));
 
     this.conn.addListener('data', function(chunk) {
@@ -175,7 +191,7 @@ Connection.prototype.connect = function() {
         var ind;
         while((ind = this.netBuffer.indexOf('\r\n')) != -1) {
             this.lineBuffer = this.netBuffer.substring(0, ind);
-            this.parse();
+            this.instance.parse(this, this.lineBuffer);
             this.netBuffer = this.netBuffer.substring(ind+2);
         }
     }.bind(this));
@@ -190,6 +206,18 @@ Connection.prototype.send = function() {
 Connection.prototype.pong = function(message) {
     this.send('PONG', ':' + message.split(':')[1]);
 };
+
+///////////////////////////////////////////////////////////////////////////////
+
+var Event = function(instance) {
+    this.instance = instance;
+};
+
+Event.prototype.reply = function(msg) {
+    this.instance.reply(this, msg);
+};
+
+///////////////////////////////////////////////////////////////////////////////
 
 exports.createJSBot = function(name) {
     return new JSBot(name);
