@@ -112,6 +112,18 @@ JSBot.prototype.parse = function(connection, input) {
 };
 
 /**
+ * Say something in a given server and channel.
+ */
+JSBot.prototype.say = function(server, channel, msg) {
+    var event = new Event(this);
+    event.server = server;
+    event.channel = channel;
+    event.msg = msg;
+
+    event.reply(msg);
+};
+
+/**
  * Reply to an event with a PRIVMSG. Called by the Event.reply.
  */
 JSBot.prototype.reply = function(event, msg) {
@@ -170,6 +182,10 @@ var Connection = function(name, instance, host, port, owner, onReady, nickserv, 
     this.conn = null;
 };
 
+/**
+ * Actually connect to the IRC server with the information given in the
+ * constructor.
+ */
 Connection.prototype.connect = function() {
     this.conn = net.createConnection(this.port, this.host);
     this.conn.setTimeout(60 * 60 * 1000);
@@ -179,7 +195,7 @@ Connection.prototype.connect = function() {
     this.conn.addListener('connect', function() {
         this.send('NICK', this.instance.nick);
         this.send('USER', this.instance.nick, '0', '*', this.instance.nick);
-        //this.say(this.nickserv, 'identify ' + this.password);
+        this.instance.say(this.name, this.nickserv, 'identify ' + this.password);
 
         var readyEvent = new Event(this.instance);
         readyEvent.server = this.name;
@@ -197,12 +213,19 @@ Connection.prototype.connect = function() {
     }.bind(this));
 };
 
+/**
+ * Takes variable number of arguments, joins them into a string split by spaces
+ * and sends to the server.
+ */
 Connection.prototype.send = function() {
     var message = [].splice.call(arguments, 0).join(' ');
     message += '\r\n';
     this.conn.write(message, this.encoding);
 };
 
+/**
+ * Send a pong response to a ping from the server.
+ */
 Connection.prototype.pong = function(message) {
     this.send('PONG', ':' + message.split(':')[1]);
 };

@@ -1,6 +1,6 @@
 jsbot = require('./jsbot');
 
-var instance = jsbot.createJSBot('jsbot');
+var instance = jsbot.createJSBot('jsbottest');
 
 instance.addConnection('aberwiki', 'irc.aberwiki.org', 6667, 'reality', function(event) {
     instance.join(event, '#lambda'); 
