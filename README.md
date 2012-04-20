@@ -1,6 +1,8 @@
+## JSBot
+
 JSBot is an IRC bot library written in Node JS.
 
-With features like multiple server support and being 'pretty good, I guess' -
+With features like multiple server support and being 'pretty good, I guess,' 
 JSBot is designed to be the IRC bot library of the future! For an example of a
 large project which uses JSBot, take a look at 
 [DepressionBot](http://github.com/reality/depressionbot/ "DepressionBot").
@@ -23,5 +25,5 @@ code, then head on over to the
 * It connects to a server
 * Listeners
 * Ping/Pong
-* Some of the other functionality you'd expect like
+* Some of the other functionality you'd expect, like, what do you want from me?
 
