@@ -75,6 +75,7 @@ JSBot.prototype.parse = function(connection, input) {
             case 'JOIN': case 'PART':
                 event.channel = parameters.split(':')[1];
                 event.message = parameters.split(':')[1];  // only PARTs have this, so it'll be undefined in JOINs
+                event.params = event.message.split(' ');
                 break;
 
             case 'MODE': // This is probably broken
@@ -87,6 +88,7 @@ JSBot.prototype.parse = function(connection, input) {
                 var colonSplit = parameters.split(':');
                 event.channel = parameters.split(' ')[0];
                 event.message = colonSplit.slice(1, colonSplit.length).join(':');
+                event.params = event.message.split(' ');
                 break;
 
             case 'KICK':
@@ -94,6 +96,8 @@ JSBot.prototype.parse = function(connection, input) {
                 event.kickee = parameters.split(' ')[1];
                 break;
         }
+        
+        if(event.channel === this.nick) event.channel = event.user;
 
         if(command in this.events) {
             this.events[command].each(function(listener) {
