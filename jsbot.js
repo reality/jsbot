@@ -129,6 +129,16 @@ JSBot.prototype.ignoreTag = function(user, tag) {
     this.ignores[user].push(tag);
 }
 
+JSBot.prototype.clearIgnores = function() {
+    this.ignores = {};
+}
+
+JSBot.prototype.removeIgnore = function(user, tag) {
+    if(this.ignores.hasOwnProperty(user) && this.ignores[user].include(tag)) {
+        this.ignores[user].slice(this.ignores[user].indexOf(tag), 1);
+    }
+}
+
 /**
  * Say something in a given server and channel.
  */
