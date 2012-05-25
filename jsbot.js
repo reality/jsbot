@@ -75,7 +75,6 @@ JSBot.prototype.parse = function(connection, input) {
             case 'JOIN': case 'PART':
                 event.channel = parameters.split(':')[1];
                 event.message = parameters.split(':')[1];  // only PARTs have this, so it'll be undefined in JOINs
-                event.params = event.message.split(' ');
                 break;
 
             case 'MODE': // This is probably broken
@@ -98,23 +97,24 @@ JSBot.prototype.parse = function(connection, input) {
         }
         
         if(event.channel === this.nick) event.channel = event.user;
-
-        if(command in this.events) {
-            this.events[command].each(function(listener) {
-                var eventFunc = listener.listener;
-                if(Object.isFunction(eventFunc) && (this.ignores.hasOwnProperty(event.user) && 
-                        this.ignores[event.user].include(listener.tag)) == false) {
-                    try {
-                        eventFunc.call(this, event);
-                    } catch(err) {
-                        console.log('ERROR: ' + eventFunc + '\n' + err);
-                    }
-                }
-            }.bind(this));
-        }
-
-        // DEBUG
+        this.emit(event);
         console.log('line: ' + message[0]);
+    }
+};
+
+JSBot.prototype.emit = function(event) {
+    if(event.action in this.events) {
+        this.events[event.action].each(function(listener) {
+            var eventFunc = listener.listener;
+            if(Object.isFunction(eventFunc) && (this.ignores.hasOwnProperty(event.user) && 
+                    this.ignores[event.user].include(listener.tag)) == false) {
+                try {
+                    eventFunc.call(this, event);
+                } catch(err) {
+                    console.log('ERROR: ' + eventFunc + '\n' + err);
+                }
+            }
+        }.bind(this));
     }
 };
 
@@ -169,6 +169,14 @@ JSBot.prototype.addListener = function(index, tag, func) {
 JSBot.prototype.join = function(event, channel) {
     this.connections[event.server].send('JOIN', channel);
 };
+
+JSBot.prototype.part = function(event, channel) {
+    this.connections[event.server].send('PART', channel);
+};
+
+JSBot.prototype.mode = function(event, msg) {
+    this.connections[event.server].send('MODE', event.channel, msg);
+}
 
 /**
  * Remove all of the listeners and reset the map.
