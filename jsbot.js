@@ -98,7 +98,7 @@ JSBot.prototype.parse = function(connection, input) {
         
         if(event.channel === this.nick) event.channel = event.user;
         this.emit(event);
-        //console.log('line: ' + message[0]);
+        console.log('line: ' + message[0]);
     }
 };
 
@@ -239,7 +239,7 @@ Connection.prototype.connect = function() {
         this.instance.say(this.name, this.nickserv, 'identify ' + this.password);
 
         var readyEvent = new Event(this.instance);
-        readyEvent.server = this.server;
+        readyEvent.server = this.name;
         this.onReady(readyEvent);
     }.bind(this));
 
