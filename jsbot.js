@@ -19,6 +19,7 @@ var JSBot = function(nick) {
         'PRIVMSG': [],
         'MODE': []
     };
+    this.addDefaultListeners();
 };
 
 /**
@@ -68,13 +69,19 @@ JSBot.prototype.parse = function(connection, input) {
             event.user = false;
         }
 
+        event.prefix = prefix;
+        event.params = parameters;
         event.raw = message;
         event.action = command;
 
         switch(command) {
-            case 'JOIN': case 'PART':
+            case 'JOIN':
                 event.channel = parameters.split(':')[1];
-                event.message = parameters.split(':')[1];  // only PARTs have this, so it'll be undefined in JOINs
+                event.message = parameters.split(':')[1];
+                break;
+
+            case 'PART': 
+                event.channel = parameters;
                 break;
 
             case 'MODE': // This is probably broken
@@ -94,6 +101,10 @@ JSBot.prototype.parse = function(connection, input) {
                 event.channel = parameters.split(' ')[0];
                 event.kickee = parameters.split(' ')[1];
                 break;
+
+            default:
+                event.channel = parameters.split(' ')[0];
+                event.message = parameters.split(' ')[1];
         }
         
         if(event.channel === this.nick) event.channel = event.user;
@@ -172,12 +183,16 @@ JSBot.prototype.addListener = function(index, tag, func) {
     };
 
     index.each((function(eventType) {
+        if(!this.events.hasOwnProperty(eventType)) {
+            this.events[eventType] = [];
+        }
         this.events[eventType].push(listener);
     }).bind(this));
+    console.log('Added listener for ' + index);
 };
 
 JSBot.prototype.join = function(event, channel) {
-    this.connections[event.server].send('JOIN', channel);
+    this.connections[event.server].join(channel);
 };
 
 JSBot.prototype.part = function(event, channel) {
@@ -199,6 +214,38 @@ JSBot.prototype.removeListeners = function() {
         'PRIVMSG': [],
         'MODE': []
     };
+    this.addDefaultListeners();
+};
+
+/**
+ * Default listeners to handle a channel nicklist.
+ *
+ * TODO: I'd like to split this out into its own file, and perhaps it could 
+ *  act as a jsbot plugin?
+ */
+JSBot.prototype.addDefaultListeners = function() {
+    this.addListener('353', 'names', function(event) {
+        event.params = event.params.match(/.+? = (#.+?) \:(.+)/);
+        event.channel = event.params[1];
+        var newNicks = event.params[2].trim().split(' ');
+        var channelNicks = this.connections[event.server].channels[event.channel].nicks;
+
+        for(var i=0;i<newNicks.length;i++) {
+            channelNicks.push(newNicks[i].replace(/@/g, ''));
+        }
+    }.bind(this));
+
+    this.addListener('JOIN', 'joinname', function(event) {
+        if(event.user !== this.nick) {
+            var channelNicks = this.connections[event.server].channels[event.channel].nicks;
+            channelNicks.push(event.user);
+        }
+    });
+
+    this.addListener('PART', 'partname', function(event) {
+        var channelNicks = this.connections[event.server].channels[event.channel].nicks;
+        channelNicks.splice(channelNicks.indexOf(event.user), 1);
+    });
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -216,6 +263,7 @@ var Connection = function(name, instance, host, port, owner, onReady, nickserv, 
     this.nickserv = nickserv;
     this.password = password;
 
+    this.channels = {};
     this.commands = {};
     this.encoding = 'utf8';
     this.lineBuffer = '';
@@ -252,6 +300,7 @@ Connection.prototype.connect = function() {
             this.netBuffer = this.netBuffer.substring(ind+2);
         }
     }.bind(this));
+
 };
 
 /**
@@ -269,6 +318,13 @@ Connection.prototype.send = function() {
  */
 Connection.prototype.pong = function(message) {
     this.send('PONG', ':' + message.split(':')[1]);
+};
+
+Connection.prototype.join = function(channel) {
+    this.send('JOIN', channel); 
+    this.channels[channel] = {
+        'nicks': []
+    };
 };
 
 ///////////////////////////////////////////////////////////////////////////////
