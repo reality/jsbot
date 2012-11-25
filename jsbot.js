@@ -225,9 +225,7 @@ JSBot.prototype.removeListeners = function() {
  */
 JSBot.prototype.addDefaultListeners = function() {
     this.addListener('353', 'names', function(event) {
-        console.log(event.params);
         event.params = event.params.match(/.+? =|@ (#.+?) \:(.+)/);
-//testressionbot @ #lambda :testressionbot depressionbot DangerousLunatic
 
         event.channel = event.params[1];
         var newNicks = event.params[2].trim().split(' ');
