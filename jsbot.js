@@ -247,6 +247,11 @@ JSBot.prototype.addDefaultListeners = function() {
         var channelNicks = this.connections[event.server].channels[event.channel].nicks;
         channelNicks.splice(channelNicks.indexOf(event.user), 1);
     });
+
+    this.addListener('KICK', 'kickname', function(event) {
+        var channelNicks = this.connections[event.server].channels[event.channel].nicks;
+        channelNicks.splice(channelNicks.indexOf(event.user), 1);
+    });
 };
 
 ///////////////////////////////////////////////////////////////////////////////
