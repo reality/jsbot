@@ -232,7 +232,12 @@ JSBot.prototype.addDefaultListeners = function() {
         var channelNicks = this.connections[event.server].channels[event.channel].nicks;
 
         for(var i=0;i<newNicks.length;i++) {
-            channelNicks.push(newNicks[i].replace(/@/g, ''));
+            channelNicks[newNicks[i].replace(/@/g, '')] = {
+                'op': false
+            };
+            if(newNicks[i].indexOf('@') == 0) {
+                channelNicks[newNicks[i].replace(/@/g, '')].op = true;
+            }
         }
     }.bind(this));
 
@@ -307,7 +312,19 @@ Connection.prototype.connect = function() {
         }
     }.bind(this));
 
+    setInterval(this.updateNickLists.bind(this), 60000);
 };
+
+Connection.prototype.updateNickLists = function() {
+    for(var channel in this.channels) {
+        if(this.channels.hasOwnProperty(channel)) {
+            this.channels[channel] = {
+                'nicks': {}
+            };
+            this.send('NAMES ' + channel);
+        }
+    }
+}
 
 /**
  * Takes variable number of arguments, joins them into a string split by spaces
@@ -329,7 +346,7 @@ Connection.prototype.pong = function(message) {
 Connection.prototype.join = function(channel) {
     this.send('JOIN', channel); 
     this.channels[channel] = {
-        'nicks': []
+        'nicks': {}
     };
 };
 
