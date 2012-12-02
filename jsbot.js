@@ -240,8 +240,13 @@ JSBot.prototype.addDefaultListeners = function() {
         var channelNicks = event.channel.nicks;
 
         for(var i=0;i<newNicks.length;i++) {
-            channelNicks[newNicks[i].replace(/@/g, '')] = {
-                'op': false
+            var name = newNicks[i].replace(/@/g, '');
+            channelNicks[name] = {
+                'name': name, 
+                'op': false,
+                'toString': function() {
+                    return this.name;
+                }
             };
             if(newNicks[i].indexOf('@') == 0) {
                 channelNicks[newNicks[i].replace(/@/g, '')].op = true;
@@ -356,7 +361,10 @@ Connection.prototype.join = function(channel) {
     this.send('JOIN', channel); 
     this.channels[channel] = {
         'name': channel,
-        'nicks': {}
+        'nicks': {},
+        'toString': function() {
+            return this.name;
+        }
     };
 };
 
