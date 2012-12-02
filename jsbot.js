@@ -107,10 +107,12 @@ JSBot.prototype.parse = function(connection, input) {
                 event.message = parameters.split(' ')[1];
         }
         
-        if(event.channel === this.nick) event.channel = event.user;
-
+        if(event.channel === this.nick) {
+            event.channel = event.user;
+        } else {
+            event.channel = this.connections[event.server].channels[event.channel];
+        }
         event.allChannels = this.connections[event.server].channels;
-        event.channel = this.connections[event.server].channels[event.channel];
 
         this.emit(event);
         console.log('line: ' + message[0]);
