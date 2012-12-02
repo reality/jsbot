@@ -336,6 +336,9 @@ Connection.prototype.updateNickLists = function() {
             this.channels[channel] = {
                 'name': channel,
                 'nicks': {}
+                'toString': function() {
+                    return this.name;
+                }
             };
             this.send('NAMES ' + channel);
         }
