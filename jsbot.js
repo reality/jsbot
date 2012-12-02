@@ -237,7 +237,7 @@ JSBot.prototype.addDefaultListeners = function() {
 
         event.channel = event.params[1];
         var newNicks = event.params[2].trim().split(' ');
-        var channelNicks = this.connections[event.server].channels[event.channel].nicks;
+        var channelNicks = event.channel.nicks;
 
         for(var i=0;i<newNicks.length;i++) {
             channelNicks[newNicks[i].replace(/@/g, '')] = {
@@ -251,18 +251,18 @@ JSBot.prototype.addDefaultListeners = function() {
 
     this.addListener('JOIN', 'joinname', function(event) {
         if(event.user !== this.nick) {
-            var channelNicks = this.connections[event.server].channels[event.channel].nicks;
+            var channelNicks = event.channel.nicks;
             channelNicks.push(event.user);
         }
     });
 
     this.addListener('PART', 'partname', function(event) {
-        var channelNicks = this.connections[event.server].channels[event.channel].nicks;
+        var channelNicks = event.channel.nicks;
         channelNicks.splice(channelNicks.indexOf(event.user), 1);
     });
 
     this.addListener('KICK', 'kickname', function(event) {
-        var channelNicks = this.connections[event.server].channels[event.channel].nicks;
+        var channelNicks = event.channel.nicks;
         channelNicks.splice(channelNicks.indexOf(event.user), 1);
     });
 };
