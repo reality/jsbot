@@ -108,6 +108,8 @@ JSBot.prototype.parse = function(connection, input) {
         }
         
         if(event.channel === this.nick) event.channel = event.user;
+
+        event.allChannels = this.connections[event.server].channels;
         event.channel = this.connections[event.server].channels[event.channel];
 
         this.emit(event);
@@ -201,8 +203,8 @@ JSBot.prototype.part = function(event, channel) {
     this.connections[event.server].send('PART', channel);
 };
 
-JSBot.prototype.mode = function(event, msg) {
-    this.connections[event.server].send('MODE', event.channel, msg);
+JSBot.prototype.mode = function(event, channel, msg) {
+    this.connections[event.server].send('MODE', channel, msg);
 }
 
 /**
