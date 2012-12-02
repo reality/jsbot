@@ -335,7 +335,7 @@ Connection.prototype.updateNickLists = function() {
         if(this.channels.hasOwnProperty(channel)) {
             this.channels[channel] = {
                 'name': channel,
-                'nicks': {}
+                'nicks': {},
                 'toString': function() {
                     return this.name;
                 }
