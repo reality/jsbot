@@ -265,12 +265,12 @@ JSBot.prototype.addDefaultListeners = function() {
 
     this.addListener('PART', 'partname', function(event) {
         var channelNicks = event.channel.nicks;
-        channelNicks.splice(channelNicks.indexOf(event.user), 1);
+        delete channelNicks[event.user];
     });
 
     this.addListener('KICK', 'kickname', function(event) {
         var channelNicks = event.channel.nicks;
-        channelNicks.splice(channelNicks.indexOf(event.user), 1);
+        delete channelNicks[event.user];
     });
 };
 
