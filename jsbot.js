@@ -108,6 +108,8 @@ JSBot.prototype.parse = function(connection, input) {
         }
         
         if(event.channel === this.nick) event.channel = event.user;
+        event.channel = this.connections[event.server].channels[event.channel];
+
         this.emit(event);
         console.log('line: ' + message[0]);
     }
@@ -319,6 +321,7 @@ Connection.prototype.updateNickLists = function() {
     for(var channel in this.channels) {
         if(this.channels.hasOwnProperty(channel)) {
             this.channels[channel] = {
+                'name': channel,
                 'nicks': {}
             };
             this.send('NAMES ' + channel);
@@ -346,6 +349,7 @@ Connection.prototype.pong = function(message) {
 Connection.prototype.join = function(channel) {
     this.send('JOIN', channel); 
     this.channels[channel] = {
+        'name': channel,
         'nicks': {}
     };
 };
