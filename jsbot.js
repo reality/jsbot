@@ -235,7 +235,7 @@ JSBot.prototype.addDefaultListeners = function() {
     this.addListener('353', 'names', function(event) {
         event.params = event.params.match(/.+? [=|@] (#.+?) \:(.+)/);
 
-        event.channel = event.params[1];
+        event.channel = event.allChannels[event.params[1]];
         var newNicks = event.params[2].trim().split(' ');
         var channelNicks = event.channel.nicks;
 
