@@ -48,6 +48,18 @@ Array.prototype.allGroupings = function() {
     return groupings;
 }
 
+Array.prototype.uniq = function() {
+    var hash = {}
+    var result = [];
+    this.each(function(item) {
+        if(!hash.hasOwnProperty(item)){
+            hash[item] = true;
+            result.push(item);
+        }
+    });
+    return result;
+}
+
 /*** String ***/
 
 String.prototype.valMatch = function(regex, expLength) {
@@ -150,6 +162,36 @@ Object.prototype.isFunction = function(obj) {
 
 Object.prototype.isArray = function(obj) {
     return Object.prototype.toString.call(obj) === '[object Array]';
+};
+
+Object.prototype.isString = function(obj) {
+    return Object.prototype.toString.call(obj) === '[object String]';
+};
+
+Object.prototype.withAll = function(fun) {
+    for(key in this) {
+        if(this.hasOwnProperty(key)){
+            fun(key, this[key]);
+        }
+    }
+};
+
+Object.prototype.length = function() {
+    var l = 0;
+    for(key in this)
+        if(this.hasOwnProperty(key))
+            l++;
+    return l;
+};
+
+Object.prototype.sort = function(object, scorer) {
+    var sortArr = [];
+    for(var key in object) {
+        if(object.hasOwnProperty(key)) {
+            sortArr.push([key, scorer(key, object)]);
+        }
+    }
+    return sortArr.sort(function(a, b) { return a[1] - b[1]; });
 };
 
 /*** Integer ***/
