@@ -312,7 +312,7 @@ Connection.prototype.connect = function() {
         }
     }.bind(this));
 
-    setInterval(this.updateNickLists.bind(this), 60000);
+    setInterval(this.updateNickLists.bind(this), 1200000);
 };
 
 Connection.prototype.updateNickLists = function() {
