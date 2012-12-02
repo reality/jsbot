@@ -262,7 +262,7 @@ JSBot.prototype.addDefaultListeners = function() {
                 'op': false,
                 'toString': function() {
                     return this.name;
-                };
+                }
             };
         }
     });
