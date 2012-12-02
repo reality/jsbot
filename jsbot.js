@@ -249,7 +249,7 @@ JSBot.prototype.addDefaultListeners = function() {
                 }
             };
             if(newNicks[i].indexOf('@') == 0) {
-                channelNicks[newNicks[i].replace(/@/g, '')].op = true;
+                channelNicks[name].op = true;
             }
         }
     }.bind(this));
@@ -257,7 +257,13 @@ JSBot.prototype.addDefaultListeners = function() {
     this.addListener('JOIN', 'joinname', function(event) {
         if(event.user !== this.nick) {
             var channelNicks = event.channel.nicks;
-            channelNicks.push(event.user);
+            channelNicks[event.user] = {
+                'name': event.user, 
+                'op': false,
+                'toString': function() {
+                    return this.name;
+                };
+            };
         }
     });
 
