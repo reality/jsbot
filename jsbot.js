@@ -170,7 +170,7 @@ JSBot.prototype.say = function(server, channel, msg) {
  * Reply to an event with a PRIVMSG. Called by the Event.reply.
  */
 JSBot.prototype.reply = function(event, msg) {
-    this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
+    this.connections[event.server].send('PRIVMSG', event.channel.name, ':' + msg);
 };
 
 /**
