@@ -73,6 +73,7 @@ JSBot.prototype.parse = function(connection, input) {
         event.params = parameters;
         event.raw = message;
         event.action = command;
+        event.time = new Date();
 
         switch(command) {
             case 'JOIN':
