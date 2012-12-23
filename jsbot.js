@@ -108,7 +108,7 @@ JSBot.prototype.parse = function(connection, input) {
                 event.message = parameters.split(' ')[1];
         }
 
-        if(command == '363') {
+        if(command == '366') {
             event.channel = event.message; // I don't even
         }
         
