@@ -107,6 +107,10 @@ JSBot.prototype.parse = function(connection, input) {
                 event.channel = parameters.split(' ')[0];
                 event.message = parameters.split(' ')[1];
         }
+
+        if(command == '363') {
+            event.channel = event.message; // I don't even
+        }
         
         if(event.channel === this.nick) {
             event.channel = event.user;
@@ -204,6 +208,7 @@ JSBot.prototype.join = function(event, channel) {
 
 JSBot.prototype.part = function(event, channel) {
     this.connections[event.server].send('PART', channel);
+    delete this.connections[event.server].channels[channel];
 };
 
 JSBot.prototype.mode = function(event, channel, msg) {
