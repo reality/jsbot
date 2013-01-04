@@ -244,7 +244,7 @@ JSBot.prototype.addDefaultListeners = function() {
         var channelNicks = event.channel.nicks;
 
         for(var i=0;i<newNicks.length;i++) {
-            var name = newNicks[i].replace(/@/g, '');
+            var name = newNicks[i].replace(/@/g, '').replace(/\+/g, '');
             channelNicks[name] = {
                 'name': name, 
                 'op': false,
