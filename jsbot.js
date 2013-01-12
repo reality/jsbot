@@ -137,6 +137,7 @@ JSBot.prototype.emit = function(event) {
                     eventFunc.call(this, event);
                 } catch(err) {
                     console.log('ERROR: ' + eventFunc + '\n' + err);
+                    console.log(err.stack.split('\n')[1].trim());
                 }
             }
         }.bind(this));
