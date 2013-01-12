@@ -36,7 +36,9 @@ JSBot.prototype.addConnection = function(name, host, port, owner, onReady, nicks
 JSBot.prototype.connect = function(name) {
     this.connections[name].connect();
     this.addListener('004', 'onReady', function(event) {
-        this.connections[event.server].onReady(event);
+        var conn = this.connections[event.server];
+        conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
+        conn.onReady(event);
     }.bind(this));
 };
 
@@ -322,7 +324,6 @@ Connection.prototype.connect = function() {
     this.conn.addListener('connect', function() {
         this.send('NICK', this.instance.nick);
         this.send('USER', this.instance.nick, '0', '*', this.instance.nick);
-        this.instance.say(this.name, this.nickserv, 'identify ' + this.password);
     }.bind(this));
 
     this.conn.addListener('data', function(chunk) {
