@@ -133,8 +133,9 @@ JSBot.prototype.emit = function(event) {
     if(event.action in this.events) {
         this.events[event.action].each(function(listener) {
             var eventFunc = listener.listener;
-            if(Object.isFunction(eventFunc) && (this.ignores.hasOwnProperty(event.user) && 
-                    this.ignores[event.user].include(listener.tag)) == false) {
+            if(Object.isFunction(eventFunc) && 
+                (this.ignores.hasOwnProperty(event.user) && this.ignores[event.user].include(listener.tag)) == false &&
+                (this.ignores.hasOwnProperty(event.channel) && this.ignores[event.channel].include(listener.tag)) == false) {
                 try {
                     eventFunc.call(this, event);
                 } catch(err) {
@@ -147,23 +148,23 @@ JSBot.prototype.emit = function(event) {
 };
 
 /**
- * Add a listener tag for a user to ignore.
+ * Add a listener tag for an 'item' (channel or user) to ignore.
  */
-JSBot.prototype.ignoreTag = function(user, tag) {
-    if(!this.ignores.hasOwnProperty(user)) {
-        this.ignores[user] = [];
+JSBot.prototype.ignoreTag = function(item, tag) {
+    if(!this.ignores.hasOwnProperty(item)) {
+        this.ignores[item] = [];
     }
 
-    this.ignores[user].push(tag);
+    this.ignores[item].push(tag);
 }
 
 JSBot.prototype.clearIgnores = function() {
     this.ignores = {};
 }
 
-JSBot.prototype.removeIgnore = function(user, tag) {
-    if(this.ignores.hasOwnProperty(user) && this.ignores[user].include(tag)) {
-        this.ignores[user].slice(this.ignores[user].indexOf(tag), 1);
+JSBot.prototype.removeIgnore = function(item, tag) {
+    if(this.ignores.hasOwnProperty(item) && this.ignores[item].include(tag)) {
+        this.ignores[item].slice(this.ignores[item].indexOf(tag), 1);
     }
 }
 
