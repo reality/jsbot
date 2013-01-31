@@ -1,5 +1,5 @@
 var net = require('net');
-require('./snippets');
+var _ = require('underscore')._;
 
 /**
  * Javascript IRC bot library! Deal with it.
@@ -46,11 +46,9 @@ JSBot.prototype.connect = function(name) {
  * Activate all of the connections.
  */
 JSBot.prototype.connectAll = function() {
-    for(var name in this.connections) {
-        if(this.connections.hasOwnProperty(name)) {
-            this.connect(name);
-        }
-    }
+    _.each(this.connections, function(connection, name) {
+        this.connect(name); 
+    }, this);
 };
 
 /**
@@ -60,7 +58,7 @@ JSBot.prototype.parse = function(connection, input) {
     var event = new Event(this);
     event.server = connection.name;
 
-    if(input.startsWith('PING')) {
+    if(input.substring(0, 4) == 'PING') { // ewwww
         this.connections[connection.name].pong(input);
     } else {
         var message = input.match(/(?:(:[^\s]+) )?([^\s]+) (.+)/);
@@ -131,11 +129,11 @@ JSBot.prototype.parse = function(connection, input) {
 
 JSBot.prototype.emit = function(event) {
     if(event.action in this.events) {
-        this.events[event.action].each(function(listener) {
+        _.each(this.events[event.action], function(listener) {
             var eventFunc = listener.listener;
-            if(Object.isFunction(eventFunc) && 
-                (this.ignores.hasOwnProperty(event.user) && this.ignores[event.user].include(listener.tag)) == false &&
-                (this.ignores.hasOwnProperty(event.channel) && this.ignores[event.channel].include(listener.tag)) == false) {
+            if(_.isFunction(eventFunc) && 
+                (_.has(this.ignores, event.user) && _.include(this.ignores[event.user], listener.tag)) == false &&
+                (_.has(this.ignores, event.channel) && _.include(this.ignores[event.channel], listener.tag)) == false) {
                 try {
                     eventFunc.call(this, event);
                 } catch(err) {
@@ -143,7 +141,7 @@ JSBot.prototype.emit = function(event) {
                     console.log(err.stack.split('\n')[1].trim());
                 }
             }
-        }.bind(this));
+        }, this);
     }
 };
 
@@ -151,7 +149,7 @@ JSBot.prototype.emit = function(event) {
  * Add a listener tag for an 'item' (channel or user) to ignore.
  */
 JSBot.prototype.ignoreTag = function(item, tag) {
-    if(!this.ignores.hasOwnProperty(item)) {
+    if(!_.has(this.ignores, item)) {
         this.ignores[item] = [];
     }
 
@@ -163,7 +161,7 @@ JSBot.prototype.clearIgnores = function() {
 }
 
 JSBot.prototype.removeIgnore = function(item, tag) {
-    if(this.ignores.hasOwnProperty(item) && this.ignores[item].include(tag)) {
+    if(_.has(this.ignores, item) && _.include(this.ignores[item], tag)) {
         this.ignores[item].slice(this.ignores[item].indexOf(tag), 1);
     }
 }
@@ -200,13 +198,10 @@ JSBot.prototype.addListener = function(index, tag, func) {
         'tag': tag
     };
 
-    index.each((function(eventType) {
-        if(!this.events.hasOwnProperty(eventType)) {
-            this.events[eventType] = [];
-        }
-        this.events[eventType].push(listener);
-    }).bind(this));
-    console.log('Added listener for ' + index);
+    _.each(index, function(type) {
+        if(!_.has(this.events, type)) this.events[type] = [];
+        this.events[type].push(listener);
+    }, this);
 };
 
 JSBot.prototype.join = function(event, channel) {
@@ -342,7 +337,7 @@ Connection.prototype.connect = function() {
 
 Connection.prototype.updateNickLists = function() {
     for(var channel in this.channels) {
-        if(this.channels.hasOwnProperty(channel)) {
+        if(_.has(this.channels, channel)) {
             this.channels[channel] = {
                 'name': channel,
                 'nicks': {},
