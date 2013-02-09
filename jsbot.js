@@ -186,6 +186,13 @@ JSBot.prototype.reply = function(event, msg) {
 };
 
 /**
+ * Reply to an event with a NOTICE. Called by the Event.replyNotice.
+ */
+JSBot.prototype.replyNotice = function(event, msg) {
+    this.connections[event.server].send('NOTICE', event.channel, ':' + msg);
+}
+
+/**
  * Add a listener function for a given event.
  */
 JSBot.prototype.addListener = function(index, tag, func) {
@@ -281,6 +288,12 @@ JSBot.prototype.addDefaultListeners = function() {
     this.addListener('KICK', 'kickname', function(event) {
         var channelNicks = event.channel.nicks;
         delete channelNicks[event.user];
+    });
+    
+    this.addListener('PRIVMSG', 'ping', function(event) {
+        if(event.message.match(/\x01PING .+\x01/) !== null) {
+            event.replyNotice(event.message);
+        }
     });
 };
 
@@ -387,6 +400,10 @@ var Event = function(instance) {
 Event.prototype.reply = function(msg) {
     this.instance.reply(this, msg);
 };
+
+Event.prototype.replyNotice = function(msg) {
+    this.instance.replyNotice(this, msg);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
