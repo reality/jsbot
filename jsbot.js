@@ -1,4 +1,5 @@
 var net = require('net');
+var tls = require('tls');
 var _ = require('underscore')._;
 
 /**
@@ -325,15 +326,22 @@ var Connection = function(name, instance, host, port, owner, onReady, nickserv, 
  * constructor.
  */
 Connection.prototype.connect = function() {
-    this.conn = net.createConnection(this.port, this.host);
+    if((typeof this.port == 'string' || this.port instanceof String) && 
+        this.port.substring(0, 1) == '+') {
+        this.conn = tls.connect(parseInt(this.port.substring(1)), this.host, {rejectUnauthorized: false});
+    } else {
+        this.conn = net.createConnection(this.port, this.host);
+    }
     this.conn.setTimeout(60 * 60 * 1000);
     this.conn.setEncoding(this.encoding);
     this.conn.setKeepAlive(enable=true, 10000);
 
-    this.conn.addListener('connect', function() {
+    connectListener = function() {
         this.send('NICK', this.instance.nick);
         this.send('USER', this.instance.nick, '0', '*', this.instance.nick);
-    }.bind(this));
+    }
+    this.conn.addListener('connect', connectListener.bind(this));
+    this.conn.addListener('secureConnect', connectListener.bind(this));
 
     this.conn.addListener('data', function(chunk) {
 	this.netBuffer += chunk;
