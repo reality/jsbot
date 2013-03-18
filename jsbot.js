@@ -1,4 +1,5 @@
 var net = require('net');
+var tls = require('tls');
 var _ = require('underscore')._;
 
 /**
@@ -25,9 +26,11 @@ var JSBot = function(nick) {
 /**
  * Add a new server connection.
  */
-JSBot.prototype.addConnection = function(name, host, port, owner, onReady, nickserv, password) {
+JSBot.prototype.addConnection = function(name, host, port, owner, onReady, nickserv, password, tlsOptions) {
+    tlsOptions = tlsOptions || {};
+    tlsOptions = _.defaults(tlsOptions, {rejectUnauthorized: false});
     this.connections[name] = new Connection(name, this, host, port, owner, onReady,
-            nickserv, password);
+            nickserv, password, tlsOptions);
 };
 
 /**
@@ -302,7 +305,7 @@ JSBot.prototype.addDefaultListeners = function() {
 /**
  * Single connection to an IRC server. Managed by the JSBot object.
  */
-var Connection = function(name, instance, host, port, owner, onReady, nickserv, password) {
+var Connection = function(name, instance, host, port, owner, onReady, nickserv, password, tlsOptions) {
     this.name = name;
     this.instance = instance;
     this.host = host;
@@ -311,6 +314,7 @@ var Connection = function(name, instance, host, port, owner, onReady, nickserv, 
     this.onReady = onReady;
     this.nickserv = nickserv;
     this.password = password;
+    this.tlsOptions = tlsOptions;
 
     this.channels = {};
     this.commands = {};
@@ -325,15 +329,22 @@ var Connection = function(name, instance, host, port, owner, onReady, nickserv, 
  * constructor.
  */
 Connection.prototype.connect = function() {
-    this.conn = net.createConnection(this.port, this.host);
+    if((typeof this.port == 'string' || this.port instanceof String) && 
+        this.port.substring(0, 1) == '+') {
+        this.conn = tls.connect(parseInt(this.port.substring(1)), this.host, this.tlsOptions);
+    } else {
+        this.conn = net.createConnection(this.port, this.host);
+    }
     this.conn.setTimeout(60 * 60 * 1000);
     this.conn.setEncoding(this.encoding);
     this.conn.setKeepAlive(enable=true, 10000);
 
-    this.conn.addListener('connect', function() {
+    connectListener = function() {
         this.send('NICK', this.instance.nick);
         this.send('USER', this.instance.nick, '0', '*', this.instance.nick);
-    }.bind(this));
+    }
+    this.conn.addListener('connect', connectListener.bind(this));
+    this.conn.addListener('secureConnect', connectListener.bind(this));
 
     this.conn.addListener('data', function(chunk) {
 	this.netBuffer += chunk;
