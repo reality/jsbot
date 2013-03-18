@@ -1,6 +1,6 @@
-var net = require('net');
-var tls = require('tls');
-var _ = require('underscore')._;
+var _ = require('underscore')._,
+    net = require('net'),
+    tls = require('tls');
 
 /**
  * Javascript IRC bot library! Deal with it.
