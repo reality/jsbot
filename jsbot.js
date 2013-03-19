@@ -70,7 +70,7 @@ JSBot.prototype.parse = function(connection, input) {
         var parameters = message[3];
 
         try { // This could be nicer
-            event.user = prefix.split('!')[0].substring(1).replace(/@/g, '').replace(/\+/g, '');
+            event.user = prefix.split('!')[0].substring(1).replace(/@/g, '').replace(/\+/g, '').replace(/\~/g, '');;
         } catch(err) {
             event.user = false;
         }
