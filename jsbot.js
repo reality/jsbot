@@ -118,6 +118,7 @@ JSBot.prototype.parse = function(connection, input) {
                 if(event.newNick.substring(0, 1) == ":") {
                     event.newNick = event.newNick.substring(1);
                 }
+                event.channel = event.newNick
                 break;
 
             default:
