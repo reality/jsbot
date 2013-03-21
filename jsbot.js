@@ -112,6 +112,13 @@ JSBot.prototype.parse = function(connection, input) {
                 event.kickee = parameters.split(' ')[1];
                 break;
 
+            case 'NICK':
+                event.newNick = parameters.split(' ')[0];
+                if(event.newNick.substring(0, 1) == ":") {
+                    event.newNick = event.newNick.substring(1);
+                }
+                break;
+
             default:
                 event.channel = parameters.split(' ')[0];
                 event.message = parameters.split(' ')[1];
