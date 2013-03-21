@@ -18,7 +18,8 @@ var JSBot = function(nick) {
         'PART': [],
         'KICK': [],
         'PRIVMSG': [],
-        'MODE': []
+        'MODE': [],
+        'KICK': []
     };
     this.addDefaultListeners();
 };
@@ -246,7 +247,8 @@ JSBot.prototype.removeListeners = function() {
         'PART': [],
         'KICK': [],
         'PRIVMSG': [],
-        'MODE': []
+        'MODE': [],
+        'KICK': []
     };
     this.addDefaultListeners();
 };
