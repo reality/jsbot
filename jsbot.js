@@ -70,7 +70,10 @@ JSBot.prototype.parse = function(connection, input) {
         var parameters = message[3];
 
         try { // This could be nicer
-            event.user = prefix.split('!')[0].substring(1).replace(/@/g, '').replace(/\+/g, '').replace(/\~/g, '');;
+            // the substring removes the : preceding the user's nick, while
+            // the regex replace removes any special user mode symbols the
+            // IRCd may have alerted us to (e.g. @ for op, + for voice)
+            event.user = prefix.split('!')[0].substring(1).replace(/[~&@%+]/g, '');
         } catch(err) {
             event.user = false;
         }
@@ -256,7 +259,9 @@ JSBot.prototype.addDefaultListeners = function() {
         var channelNicks = event.channel.nicks;
 
         for(var i=0;i<newNicks.length;i++) {
-            var name = newNicks[i].replace(/@/g, '').replace(/\+/g, '');
+            // remove any user modes the IRCd may have put in the names list
+            // (e.g. @ for op, + for voice)
+            var name = newNicks[i].replace(/[~&@%+]/g, '');
             channelNicks[name] = {
                 'name': name, 
                 'op': false,
