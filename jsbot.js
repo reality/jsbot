@@ -18,7 +18,8 @@ var JSBot = function(nick) {
         'PART': [],
         'KICK': [],
         'PRIVMSG': [],
-        'MODE': []
+        'MODE': [],
+        'KICK': []
     };
     this.addDefaultListeners();
 };
@@ -110,6 +111,14 @@ JSBot.prototype.parse = function(connection, input) {
             case 'KICK':
                 event.channel = parameters.split(' ')[0];
                 event.kickee = parameters.split(' ')[1];
+                break;
+
+            case 'NICK':
+                event.newNick = parameters.split(' ')[0];
+                if(event.newNick.substring(0, 1) == ":") {
+                    event.newNick = event.newNick.substring(1);
+                }
+                event.channel = event.newNick
                 break;
 
             default:
@@ -239,7 +248,8 @@ JSBot.prototype.removeListeners = function() {
         'PART': [],
         'KICK': [],
         'PRIVMSG': [],
-        'MODE': []
+        'MODE': [],
+        'KICK': []
     };
     this.addDefaultListeners();
 };
