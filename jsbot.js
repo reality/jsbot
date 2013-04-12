@@ -275,12 +275,16 @@ JSBot.prototype.addDefaultListeners = function() {
             channelNicks[name] = {
                 'name': name, 
                 'op': false,
+                'voice': false,
                 'toString': function() {
                     return this.name;
                 }
             };
             if(newNicks[i].indexOf('@') == 0) {
                 channelNicks[name].op = true;
+            }
+            if(newNicks[i].indexOf('+') == 0) {
+                channelNicks[name].voice = true;
             }
         }
     }.bind(this));
