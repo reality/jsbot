@@ -121,6 +121,10 @@ JSBot.prototype.parse = function(connection, input) {
                 event.channel = event.newNick
                 break;
 
+            case '474':
+                event.channel = parameters.split(' ')[1];
+                break;
+
             default:
                 event.channel = parameters.split(' ')[0];
                 event.message = parameters.split(' ')[1];
@@ -301,6 +305,10 @@ JSBot.prototype.addDefaultListeners = function() {
             };
         }
     });
+
+    this.addListener('474', 'banname', function(event) {
+	delete this.connections[event.server].channels[event.channel];
+    }.bind(this));
 
     this.addListener('PART', 'partname', function(event) {
         var channelNicks = event.channel.nicks;
