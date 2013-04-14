@@ -87,8 +87,8 @@ JSBot.prototype.parse = function(connection, input) {
 
         switch(command) {
             case 'JOIN':
-                event.channel = parameters.split(':')[1];
-                event.message = parameters.split(':')[1];
+                event.channel = parameters.split(' ')[1];
+                if(event.channel.charAt(0) == ':') event.channel = event.channel.substr(1);
                 break;
 
             case 'PART': 
