@@ -141,6 +141,10 @@ JSBot.prototype.parse = function(connection, input) {
         }
         event.allChannels = this.connections[event.server].channels;
 
+        if(event.params[0] == ':') {
+            params.shift();
+        }
+
         this.emit(event);
         console.log('line: ' + message[0]);
     }
