@@ -154,7 +154,9 @@ JSBot.prototype.emit = function(event) {
                 (_.has(this.ignores, event.user) && _.include(this.ignores[event.user], listener.tag)) == false &&
                 (_.has(this.ignores, event.channel) && _.include(this.ignores[event.channel], listener.tag)) == false) {
                 try {
-                    eventFunc.call(this, event);
+                    process.nextTick(function() {
+                        eventFunc.call(this, event);
+                    }.bind(this));
                 } catch(err) {
                     console.log('ERROR: ' + eventFunc + '\n' + err);
                     console.log(err.stack.split('\n')[1].trim());
@@ -349,6 +351,7 @@ var Connection = function(name, instance, host, port, owner, onReady, nickserv, 
     this.lineBuffer = '';
     this.netBuffer = '';
     this.conn = null;
+    this.lastSent = Date.now();
 };
 
 /**
@@ -407,8 +410,13 @@ Connection.prototype.updateNickLists = function() {
  */
 Connection.prototype.send = function() {
     var message = [].splice.call(arguments, 0).join(' ');
-    message += '\r\n';
-    this.conn.write(message, this.encoding);
+    if(Date.now() - this.lastSent >= 10) {
+        message += '\r\n';
+        this.conn.write(message, this.encoding);
+        this.lastSent = Date.now();
+    } else {
+        setTimeout(this.send(message), 10) 
+    }
 };
 
 /**
