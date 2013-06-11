@@ -150,7 +150,7 @@ JSBot.prototype.emit = function(event) {
     if(event.action in this.events) {
         _.each(this.events[event.action], function(listener) {
             var eventFunc = listener.listener;
-            if(_.isFunction(eventFunc) &&  event.channel &&
+            if(_.isFunction(eventFunc) && event.channel && this.ignores &&
                 (_.has(this.ignores, event.user) && _.include(this.ignores[event.user], listener.tag)) == false &&
                 (_.has(this.ignores, event.channel) && _.include(this.ignores[event.channel], listener.tag)) == false) {
                 try {
