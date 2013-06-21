@@ -14,6 +14,11 @@ instance.addConnection('darchoods', 'irc.darchoods.net', '+6697', 'reality', fun
     instance.join(event, '#realitest');
 }.bind(this));
 
+instance.addPreEmitHook(function(event, callback) {
+    if(event.user) event.user = event.user.toLowerCase();
+    callback(false);
+});
+
 instance.addListener('JOIN', 'join', function(event) {
     event.reply('I love ' + event.user);
 });

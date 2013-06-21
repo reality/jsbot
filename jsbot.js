@@ -1,5 +1,6 @@
 var _ = require('underscore')._,
     net = require('net'),
+    async = require('async'),
     tls = require('tls');
 
 /**
@@ -12,6 +13,7 @@ var JSBot = function(nick) {
     this.nick = nick;
     this.connections = {};
     this.ignores = {};
+    this.preEmitHooks = [];
 
     this.events = {
         'JOIN': [],
@@ -141,9 +143,23 @@ JSBot.prototype.parse = function(connection, input) {
         }
         event.allChannels = this.connections[event.server].channels;
 
-        this.emit(event);
+        // Run any pre-emit hooks
+        async.eachSeries(this.preEmitHooks, function(hook, callback) {
+            hook(event, callback);
+        }, function(err) {
+            this.emit(event);
+        }.bind(this));
+
         console.log('line: ' + message[0]);
     }
+};
+
+JSBot.prototype.addPreEmitHook = function(func) {
+    this.preEmitHooks.push(func);
+};
+
+JSBot.prototype.clearHooks = function() {
+    this.preEmitHooks = [];
 };
 
 JSBot.prototype.emit = function(event) {
