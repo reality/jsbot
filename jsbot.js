@@ -166,13 +166,17 @@ JSBot.prototype.emit = function(event) {
     if(event.action in this.events) {
         _.each(this.events[event.action], function(listener) {
             var eventFunc = listener.listener;
-            if(_.isFunction(eventFunc) && event.channel && this.ignores &&
+
+            var channel = false;
+            if(event.channel) {
+                channel = event.channel.name;
+            }
+
+            if(_.isFunction(eventFunc) && this.ignores &&
                 (_.has(this.ignores, event.user) && _.include(this.ignores[event.user], listener.tag)) == false &&
-                (_.has(this.ignores, event.channel.name) && _.include(this.ignores[event.channel.name], listener.tag)) == false) {
+                (_.has(this.ignores, channel) && _.include(this.ignores[channel], listener.tag)) == false) {
                 try {
-                    process.nextTick(function() {
-                        eventFunc.call(this, event);
-                    }.bind(this));
+                    eventFunc.call(this, event);
                 } catch(err) {
                     console.log('ERROR: ' + eventFunc + '\n' + err);
                     console.log(err.stack.split('\n')[1].trim());
