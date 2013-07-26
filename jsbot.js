@@ -406,7 +406,7 @@ Connection.prototype.connect = function() {
         }
     }.bind(this));
 
-    setInterval(this.updateNickLists.bind(this), 1200000);
+    setInterval(this.updateNickLists.bind(this), 3600000);
 };
 
 Connection.prototype.updateNickLists = function() {
