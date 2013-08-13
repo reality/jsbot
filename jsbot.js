@@ -41,11 +41,12 @@ JSBot.prototype.addConnection = function(name, host, port, owner, onReady, nicks
  */
 JSBot.prototype.connect = function(name) {
     this.connections[name].connect();
+    var conn = this.connections[event.server];
     this.addListener('004', 'onReady', function(event) {
-        var conn = this.connections[event.server];
         conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
         conn.onReady(event);
     }.bind(this));
+    conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
 };
 
 /**
