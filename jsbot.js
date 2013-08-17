@@ -331,15 +331,18 @@ JSBot.prototype.addDefaultListeners = function() {
 
     // This is a bit hacky but fuck you
     this.addListener('MODE', 'modop', function(event) {
+        var modeChanges = event.modeChanges,
+            targetUser = event.targetUser;
+
         if(modeChanges && targetUser) {
             if(modeChanges == '+o') {
-                event.channel.nicks[event.targetUser].op = true;
+                event.channel.nicks[targetUser].op = true;
             } else if(modeChanges == '+v') {
-                event.channel.nicks[event.targetUser].voice = true;
+                event.channel.nicks[targetUser].voice = true;
             } else if(modeChanges == '-o') {
-                event.channel.nicks[event.targetUser].op = false;
+                event.channel.nicks[targetUser].op = false;
             } else if(modeChanges == '-v') {
-                event.channel.nicks[event.targetUser].voice = false;
+                event.channel.nicks[targetUser].voice = false;
             }
         }
     });
