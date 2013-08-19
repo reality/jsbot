@@ -351,6 +351,7 @@ JSBot.prototype.addDefaultListeners = function() {
         _.each(event.allChannels, function(channel) {
             if(_.has(channel.nicks, event.user)) {
                 channel.nicks[event.newNick] = channel.nicks[event.user];
+                channel.nicks[event.newNick].name = event.newNick;
                 delete channel.nicks[event.user];
             }
         });
