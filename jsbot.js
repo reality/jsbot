@@ -347,6 +347,15 @@ JSBot.prototype.addDefaultListeners = function() {
         }
     });
 
+    this.addListener('NICK', 'nickchan', function(event) {
+        _.each(event.allChannels, function(channel) {
+            if(_.has(channel, event.user)) {
+                channel[event.newNick] = channel[event.user];
+                delete channel[event.user];
+            }
+        });
+    });
+
     this.addListener('474', 'banname', function(event) {
 	delete this.connections[event.server].channels[event.channel];
     }.bind(this));
