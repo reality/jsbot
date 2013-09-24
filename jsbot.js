@@ -50,14 +50,6 @@ JSBot.prototype.connect = function(name) {
 };
 
 /**
- * Disconnect a named connection.
- */
-JSBot.prototype.disconnect = function(name) {
-    var conn = this.connections[name];
-    if(conn) conn.conn.disconnect();
-};
-
-/**
  * Activate all of the connections.
  */
 JSBot.prototype.connectAll = function() {
@@ -173,7 +165,7 @@ JSBot.prototype.clearHooks = function() {
 
 JSBot.prototype.emit = function(event) {
     if(event.action in this.events) {
-        async.each(this.events[event.action], function(listener) {
+        _.each(this.events[event.action], function(listener) {
             var eventFunc = listener.listener;
 
             var channel = false;
