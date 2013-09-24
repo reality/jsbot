@@ -1,0 +1,29 @@
+{
+  "name": "jsbot",
+  "version": "0.2.9",
+  "description": "It's a JS IRC library.",
+  "main": "jsbot.js",
+  "dependencies": {
+    "async": "~0.2.9",
+    "underscore": "~1.4.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/reality/jsbot.git"
+  },
+  "keywords": [
+    "irc",
+    "ssl",
+    "reality",
+    "dbot"
+  ],
+  "author": "Luke Slater (reality)",
+  "license": "GPL",
+  "bugs": {
+    "url": "https://github.com/reality/jsbot/issues"
+  }
+}
