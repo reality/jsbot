@@ -50,6 +50,14 @@ JSBot.prototype.connect = function(name) {
 };
 
 /**
+ * Disconnect a named connection.
+ */
+JSBot.prototype.disconnect = function(name) {
+    var conn = this.connections[name];
+    if(conn) conn.disconnect();
+};
+
+/**
  * Activate all of the connections.
  */
 JSBot.prototype.connectAll = function() {
