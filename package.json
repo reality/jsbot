@@ -1,6 +1,6 @@
 {
   "name": "jsbot",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "description": "It's a JS IRC library.",
   "main": "jsbot.js",
   "dependencies": {
