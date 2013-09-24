@@ -54,7 +54,7 @@ JSBot.prototype.connect = function(name) {
  */
 JSBot.prototype.disconnect = function(name) {
     var conn = this.connections[name];
-    if(conn) conn.disconnect();
+    if(conn) conn.conn.disconnect();
 };
 
 /**
