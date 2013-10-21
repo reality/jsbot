@@ -224,7 +224,17 @@ JSBot.prototype.say = function(server, channel, msg) {
  * Reply to an event with a PRIVMSG. Called by the Event.reply.
  */
 JSBot.prototype.reply = function(event, msg) {
-    this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
+    var conn = this.connections[event.server],
+        cTime = new Date().getTime();
+
+    if(_.has(conn, 'last' && cTime < conn.last + 500)) {
+        setTimeout(function() {
+            event.reply(msg); 
+        }, 500);
+    } else {
+        this.connections[event.server].last = cTime;
+        this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
+    }
 };
 
 /**
