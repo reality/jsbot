@@ -18,6 +18,7 @@ var JSBot = function(nick) {
     this.events = {
         'JOIN': [],
         'PART': [],
+        'QUIT': [],
         'KICK': [],
         'PRIVMSG': [],
         'MODE': [],
@@ -95,7 +96,14 @@ JSBot.prototype.parse = function(connection, input) {
                 break;
 
             case 'PART': 
-                event.channel = parameters;
+                var colonSplit = parameters.split(':');
+                event.channel = parameters.split(' ')[0];
+                event.message = colonSplit.slice(1, colonSplit.length).join(':');
+                break;
+
+            case 'QUIT':
+                var colonSplit = parameters.split(':');
+                event.message = colonSplit.slice(1, colonSplit.length).join(':');
                 break;
 
             case 'MODE': // This is probably broken
@@ -112,8 +120,10 @@ JSBot.prototype.parse = function(connection, input) {
                 break;
 
             case 'KICK':
+                var colonSplit = parameters.split(':');
                 event.channel = parameters.split(' ')[0];
                 event.kickee = parameters.split(' ')[1];
+                event.message = colonSplit.slice(1, colonSplit.length).join(':');
                 break;
 
             case 'NICK':
