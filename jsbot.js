@@ -120,6 +120,11 @@ JSBot.prototype.parse = function(connection, input) {
                 event.params = event.message.split(' ');
                 break;
 
+            case 'TOPIC':
+                event.channel = parameters.split(' ')[0];
+                event.message = parameters.match(/"[^:]+/)[0].substr(1);
+                break;
+
             case 'KICK':
                 var colonSplit = parameters.split(':');
                 event.channel = parameters.split(' ')[0];
