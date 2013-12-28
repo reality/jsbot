@@ -19,7 +19,7 @@ var JSBot = function(nick) {
         'JOIN': [],
         'PART': [],
         'QUIT': [],
-        'KICK': [],
+        'NICK': [],
         'PRIVMSG': [],
         'MODE': [],
         'KICK': []
@@ -104,6 +104,7 @@ JSBot.prototype.parse = function(connection, input) {
             case 'QUIT':
                 var colonSplit = parameters.split(':');
                 event.message = colonSplit.slice(1, colonSplit.length).join(':');
+                event.multiChannel = true;
                 break;
 
             case 'MODE': // This is probably broken
@@ -128,10 +129,8 @@ JSBot.prototype.parse = function(connection, input) {
 
             case 'NICK':
                 event.newNick = parameters.split(' ')[0];
-                if(event.newNick.substring(0, 1) == ":") {
-                    event.newNick = event.newNick.substring(1);
-                }
-                event.channel = event.newNick
+                if(event.newNick.charAt(0) == ':') event.newNick = event.newNick.substr(1);
+                event.multiChannel = true;
                 break;
 
             case '474':
@@ -150,7 +149,27 @@ JSBot.prototype.parse = function(connection, input) {
         if(event.channel === this.nick) {
             event.channel = event.user;
         } else {
-            event.channel = this.connections[event.server].channels[event.channel];
+            // If there was a channel set by command handling, just replace it by the corresponding object
+            if(this.connections[event.server].channels[event.channel] != undefined) {
+                event.channel = this.connections[event.server].channels[event.channel];
+            } else {
+            // If there was no channel set, and this is a multi-channel event, place all channels the user is in
+                if(event.multiChannel === true) {
+                    event.channel = [];
+                    var chans = this.connections[event.server].channels;
+                    // Go through all channels the bot is in
+                    for(var chan in chans) {
+                        // Go through all nicks in these channels
+                        for(var nik in chans[chan].nicks) {
+                            // Put all channels that contain the nick changing user
+                            if(nik === event.user) {
+                                event.channel.push(chans[chan]);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
         event.allChannels = this.connections[event.server].channels;
 
