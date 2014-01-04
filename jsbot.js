@@ -258,17 +258,7 @@ JSBot.prototype.say = function(server, channel, msg) {
  * Reply to an event with a PRIVMSG. Called by the Event.reply.
  */
 JSBot.prototype.reply = function(event, msg) {
-    var conn = this.connections[event.server],
-        cTime = new Date().getTime();
-
-    if(_.has(conn, 'last' && cTime < conn.last + 500)) {
-        setTimeout(function() {
-            event.reply(msg); 
-        }, 500);
-    } else {
-        this.connections[event.server].last = cTime;
-        this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
-    }
+    this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
 };
 
 /**
@@ -503,12 +493,14 @@ Connection.prototype.updateNickLists = function() {
  */
 Connection.prototype.send = function() {
     var message = [].splice.call(arguments, 0).join(' ');
-    if(Date.now() - this.lastSent >= 10) {
+    if(Date.now() > this.lastSent + 100) {
         message += '\r\n';
         this.conn.write(message, this.encoding);
         this.lastSent = Date.now();
     } else {
-        setTimeout(this.send(message), 10) 
+        setTimeout(function() {
+            this.send(message),
+        }.bind(this), 200); 
     }
 };
 
