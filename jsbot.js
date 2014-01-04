@@ -499,7 +499,7 @@ Connection.prototype.send = function() {
         this.lastSent = Date.now();
     } else {
         setTimeout(function() {
-            this.send(message),
+            this.send(message);
         }.bind(this), 200); 
     }
 };
