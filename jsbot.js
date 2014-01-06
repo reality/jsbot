@@ -400,6 +400,12 @@ JSBot.prototype.addDefaultListeners = function() {
         delete channelNicks[event.user];
     });
 
+    this.addListener('QUIT', 'quitname', function(event) {
+        _.each(event.allChannels, function(channel) {
+            delete channel.nicks[event.user];
+        });
+    }.bind(this));
+
     this.addListener('KICK', 'kickname', function(event) {
         var channelNicks = event.channel.nicks;
         delete channelNicks[event.user];
