@@ -499,14 +499,14 @@ Connection.prototype.updateNickLists = function() {
  */
 Connection.prototype.send = function() {
     var message = [].splice.call(arguments, 0).join(' ');
-    if(Date.now() > this.lastSent + 100) {
+    if(Date.now() > this.lastSent + 500) {
         message += '\r\n';
         this.conn.write(message, this.encoding);
         this.lastSent = Date.now();
     } else {
         setTimeout(function() {
             this.send(message);
-        }.bind(this), 200); 
+        }.bind(this), 1000); 
     }
 };
 
