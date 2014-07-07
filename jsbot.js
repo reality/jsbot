@@ -1,7 +1,8 @@
 var _ = require('underscore')._,
     net = require('net'),
     async = require('async'),
-    tls = require('tls');
+    tls = require('tls'),
+    process = require('process');
 
 /**
  * Javascript IRC bot library! Deal with it.
@@ -143,8 +144,12 @@ JSBot.prototype.parse = function(connection, input) {
                 break;
 
             default:
-                event.channel = parameters.split(' ')[0];
-                event.message = parameters.split(' ')[1];
+                if(_.has(this.events, event.action)) {
+                    event.channel = parameters.split(' ')[0];
+                    event.message = parameters.split(' ')[1];
+                } else {
+                    return false;
+                }
         }
 
         if(command == '366') {
@@ -499,14 +504,14 @@ Connection.prototype.updateNickLists = function() {
  */
 Connection.prototype.send = function() {
     var message = [].splice.call(arguments, 0).join(' ');
-    if(Date.now() > this.lastSent + 100) {
+    if(Date.now() > this.lastSent + 200) {
         message += '\r\n';
         this.conn.write(message, this.encoding);
         this.lastSent = Date.now();
     } else {
-        setTimeout(function() {
+        setImmediate(function() {
             this.send(message);
-        }.bind(this), 200); 
+        }.bind(this));
     }
 };
 
