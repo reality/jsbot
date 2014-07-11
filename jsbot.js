@@ -45,7 +45,7 @@ JSBot.prototype.connect = function(name) {
     var conn = this.connections[name];
     this.addListener('004', 'onReady', function(event) {
         conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
-        conn.onReady(event);
+        setTimeout(function(){conn.onReady(event);},5000);
     }.bind(this));
     conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
 };
