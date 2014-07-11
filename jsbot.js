@@ -1,8 +1,7 @@
 var _ = require('underscore')._,
     net = require('net'),
     async = require('async'),
-    tls = require('tls'),
-    process = require('process');
+    tls = require('tls');
 
 /**
  * Javascript IRC bot library! Deal with it.
@@ -46,7 +45,7 @@ JSBot.prototype.connect = function(name) {
     var conn = this.connections[name];
     this.addListener('004', 'onReady', function(event) {
         conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
-        conn.onReady(event);
+        setTimeout(function(){conn.onReady(event);},5000);
     }.bind(this));
     conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
 };
@@ -504,7 +503,7 @@ Connection.prototype.updateNickLists = function() {
  */
 Connection.prototype.send = function() {
     var message = [].splice.call(arguments, 0).join(' ');
-    if(Date.now() > this.lastSent + 200) {
+    if(Date.now() > this.lastSent + 500) {
         message += '\r\n';
         this.conn.write(message, this.encoding);
         this.lastSent = Date.now();
