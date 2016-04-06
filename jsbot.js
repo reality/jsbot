@@ -269,7 +269,7 @@ JSBot.prototype.reply = function(event, msg) {
  * Reply to an event with a NOTICE. Called by the Event.replyNotice.
  */
 JSBot.prototype.replyNotice = function(event, msg) {
-    this.connections[event.server].send('NOTICE', event.channel, ':' + msg);
+    this.connections[event.server].send('NOTICE', event.user , ':' + msg);
 }
 
 /**
