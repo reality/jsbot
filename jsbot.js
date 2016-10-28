@@ -89,15 +89,17 @@ JSBot.prototype.parse = function(connection, input) {
         event.action = command;
         event.time = new Date();
 
+        var wsSplit = event.params.split(' ');
+
         switch(command) {
             case 'JOIN':
-                event.channel = parameters.split(' ')[0];
+                event.channel = wsSplit[0];
                 if(event.channel.charAt(0) == ':') event.channel = event.channel.substr(1);
                 break;
 
             case 'PART': 
                 var colonSplit = parameters.split(':');
-                event.channel = parameters.split(' ')[0];
+                event.channel = wsSplit[0];
                 event.message = colonSplit.slice(1, colonSplit.length).join(':');
                 break;
 
@@ -107,45 +109,45 @@ JSBot.prototype.parse = function(connection, input) {
                 event.multiChannel = true;
                 break;
 
-            case 'MODE': // This is probably broken
-                event.channel = parameters.split(' ')[0];
-                event.modeChanges = parameters.split(' ')[1];
-                event.targetUser = parameters.split(' ')[2];
+            case 'MODE':
+                event.channel = wsSplit[0];
+                event.modeChanges = wsSplit[1];
+                event.targetUsers = wsSplit.slice(2, wsSplit.length);
                 break;
 
             case 'PRIVMSG':
                 var colonSplit = parameters.split(':');
-                event.channel = parameters.split(' ')[0];
+                event.channel = wsSplit[0];
                 event.message = colonSplit.slice(1, colonSplit.length).join(':');
                 event.params = event.message.split(' ');
                 break;
 
             case 'TOPIC':
-                event.channel = parameters.split(' ')[0];
+                event.channel = wsSplit[0];
                 event.message = parameters.match(/[^:]+/)[0].substr(1);
                 break;
 
             case 'KICK':
                 var colonSplit = parameters.split(':');
-                event.channel = parameters.split(' ')[0];
-                event.kickee = parameters.split(' ')[1];
+                event.channel = wsSplit[0];
+                event.kickee = wsSplit[1];
                 event.message = colonSplit.slice(1, colonSplit.length).join(':');
                 break;
 
             case 'NICK':
-                event.newNick = parameters.split(' ')[0];
+                event.newNick = wsSplit[0];
                 if(event.newNick.charAt(0) == ':') event.newNick = event.newNick.substr(1);
                 event.multiChannel = true;
                 break;
 
             case '474':
-                event.channel = parameters.split(' ')[1];
+                event.channel = wsSplit[1];
                 break;
 
             default:
                 if(_.has(this.events, event.action)) {
-                    event.channel = parameters.split(' ')[0];
-                    event.message = parameters.split(' ')[1];
+                    event.channel = wsSplit[0];
+                    event.message = wsSplit[1];
                 } else {
                     return false;
                 }
@@ -367,20 +369,28 @@ JSBot.prototype.addDefaultListeners = function() {
         }
     });
 
-    // This is a bit hacky but fuck you
     this.addListener('MODE', 'modop', function(event) {
-        var modeChanges = event.modeChanges,
-            targetUser = event.targetUser;
+        if(!event.modeChanges || !event.targetUsers) {
+            return;
+        }
 
-        if(modeChanges && targetUser) {
-            if(modeChanges == '+o') {
-                event.channel.nicks[targetUser].op = true;
-            } else if(modeChanges == '+v') {
-                event.channel.nicks[targetUser].voice = true;
-            } else if(modeChanges == '-o') {
-                event.channel.nicks[targetUser].op = false;
-            } else if(modeChanges == '-v') {
-                event.channel.nicks[targetUser].voice = false;
+        var changeSets = event.modeChanges.match(/[+-][ov]+/);
+        if (!changeSets) {
+            return;
+        }
+
+        for(var i=0; i < changeSets.length; ++i) {
+            var chanUser = event.channel.nicks[event.targetUsers[i]],
+                prefix = changeSets[i].match(/[+-]/)[0],
+                flags = changeSets[i].match(/[ov]+/)[0],
+                value = prefix == '+';
+
+            for(var f=0; f < flags.length; ++f) {
+                if(flags[f] == 'o') {
+                    chanUser.op = value;
+                } else if(flags[f] == 'v') {
+                    chanUser.voice = value;
+                }
             }
         }
     });
