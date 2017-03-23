@@ -1,7 +1,8 @@
 var _ = require('underscore')._,
     net = require('net'),
     async = require('async'),
-    tls = require('tls');
+    tls = require('tls'),
+    Tokenizer = require('./tokenizer');
 
 /**
  * Javascript IRC bot library! Deal with it.
@@ -14,16 +15,7 @@ var JSBot = function(nick) {
     this.connections = {};
     this.ignores = {};
     this.preEmitHooks = [];
-
-    this.events = {
-        'JOIN': [],
-        'PART': [],
-        'QUIT': [],
-        'NICK': [],
-        'PRIVMSG': [],
-        'MODE': [],
-        'KICK': []
-    };
+    this.events = {};
     this.addDefaultListeners();
 };
 
@@ -63,136 +55,143 @@ JSBot.prototype.connectAll = function() {
  * Take some input and populate an event object.
  */
 JSBot.prototype.parse = function(connection, input) {
-    var event = new Event(this);
+    var event = new Event(this),
+        t = new Tokenizer(input);
+
+    console.log(input);
+
     event.server = connection.name;
+    event.allChannels = this.connections[event.server].channels;
 
-    if(input.substring(0, 4) == 'PING') { // ewwww
-        this.connections[connection.name].pong(input);
+    if(input[0] == ':') {
+        // consume to next whitespace, strip leading ':'
+        var prefix = t.tokenize(' '),
+            maskMatch = prefix.match(/:(.+)!(.+)@(.+)/);
+
+        if(maskMatch && maskMatch.length == 4) {
+            event.user = maskMatch[1];
+            event.ident = maskMatch[2];
+            event.host = maskMatch[3];
+        }
+        else {
+            event.host = prefix.substring(1);
+        }
+    }
+
+    /* parameter string extraction */
+
+    // try consuming to beginning of a message
+    var paramsStr = t.tokenize(' :');
+    if(!paramsStr) {
+        // if that fails (no message), fall back to line ending
+        paramsStr = t.tokenize(null);
     } else {
-        var message = input.match(/(?:(:[^\s]+) )?([^\s]+) (.+)/);
-        var prefix = message[1];
-        var command = message[2];
-        var parameters = message[3];
+        // first attempt succeeded, extract message
+        event.message = t.tokenize(null);
+    }
 
-        try { // This could be nicer
-            // the substring removes the : preceding the user's nick, while
-            // the regex replace removes any special user mode symbols the
-            // IRCd may have alerted us to (e.g. @ for op, + for voice)
-            event.user = prefix.split('!')[0].substring(1).replace(/[~&@%+]/g, '');
-        } catch(err) {
-            event.user = false;
+    // split the parameter string
+    event.params = paramsStr.split(' ');
+    // use first item as action, remove from list
+    event.action = event.params.shift();
+
+//  -- Common Event Variables --
+//  All channel/nick/target parameters in server-to-client events are accounted for here.
+//  Others need to be handled manually via event.params.
+
+    if (/^\d+$/.test(event.action)) {
+        var rsp =             parseInt(event.action),
+            nickRsps =        [ 301, 311, 312, 313, 317, 318, 319, 314,
+                                369, 322, 324, 401, 406, 432, 433, 436 ],
+            channelRsps =     [ 322, 324, 331, 332, 346, 347, 348, 349,
+                                366, 367, 368, 403, 404, 405, 467, 471,
+                                473, 474, 475, 476, 477, 478, 482 ],
+            channelNickRsps = [ 325, 341 ],
+            targetRsps =      [ 407, 437 ];
+
+        if(nickRsps.indexOf(rsp) != -1) {
+            event.user = event.params[0];
         }
-
-        event.prefix = prefix;
-        event.params = parameters;
-        event.raw = message;
-        event.action = command;
-        event.time = new Date();
-
-        var wsSplit = event.params.split(' ');
-
-        switch(command) {
-            case 'JOIN':
-                event.channel = wsSplit[0];
-                if(event.channel.charAt(0) == ':') event.channel = event.channel.substr(1);
-                break;
-
-            case 'PART': 
-                var colonSplit = parameters.split(':');
-                event.channel = wsSplit[0];
-                event.message = colonSplit.slice(1, colonSplit.length).join(':');
-                break;
-
-            case 'QUIT':
-                var colonSplit = parameters.split(':');
-                event.message = colonSplit.slice(1, colonSplit.length).join(':');
-                event.multiChannel = true;
-                break;
-
-            case 'MODE':
-                event.channel = wsSplit[0];
-                event.modeChanges = wsSplit[1];
-                event.targetUsers = wsSplit.slice(2, wsSplit.length);
-                break;
-
-            case 'PRIVMSG':
-                var colonSplit = parameters.split(':');
-                event.channel = wsSplit[0];
-                event.message = colonSplit.slice(1, colonSplit.length).join(':');
-                event.params = event.message.split(' ');
-                break;
-
-            case 'TOPIC':
-                event.channel = wsSplit[0];
-                event.message = parameters.match(/[^:]+/)[0].substr(1);
-                break;
-
-            case 'KICK':
-                var colonSplit = parameters.split(':');
-                event.channel = wsSplit[0];
-                event.kickee = wsSplit[1];
-                event.message = colonSplit.slice(1, colonSplit.length).join(':');
-                break;
-
-            case 'NICK':
-                event.newNick = wsSplit[0];
-                if(event.newNick.charAt(0) == ':') event.newNick = event.newNick.substr(1);
-                event.multiChannel = true;
-                break;
-
-            case '474':
-                event.channel = wsSplit[1];
-                break;
-
-            default:
-                if(_.has(this.events, event.action)) {
-                    event.channel = wsSplit[0];
-                    event.message = wsSplit[1];
-                } else {
-                    return false;
-                }
+        else if(channelRsps.indexOf(rsp) != -1) {
+            event.channel = event.params[0];
         }
-
-        if(command == '366') {
-            event.channel = event.message; // I don't even
+        else if(channelNickRsps.indexOf(rsp) != -1) {
+            event.channel = event.params[0];
+            event.user = event.params[1];
         }
-        
-        if(event.channel === this.nick) {
-            event.channel = event.user;
-        } else {
-            // If there was a channel set by command handling, just replace it by the corresponding object
-            if(this.connections[event.server].channels[event.channel] != undefined) {
-                event.channel = this.connections[event.server].channels[event.channel];
+        else if(targetRsps.indexOf(rsp) != -1) {
+            if ('&#!+.~'.indexOf(event.params[0][0]) != -1) {
+                event.channel = event.params[0];
             } else {
-            // If there was no channel set, and this is a multi-channel event, place all channels the user is in
-                if(event.multiChannel === true) {
-                    event.channel = [];
-                    var chans = this.connections[event.server].channels;
-                    // Go through all channels the bot is in
-                    for(var chan in chans) {
-                        // Go through all nicks in these channels
-                        for(var nik in chans[chan].nicks) {
-                            // Put all channels that contain the nick changing user
-                            if(nik === event.user) {
-                                event.channel.push(chans[chan]);
-                                break;
-                            }
-                        }
+                event.user = event.params[0];
+            }
+        }
+        else if(rsp == 352) {
+            event.channel = event.params[0];
+            event.user = event.params[4];
+        }
+        else if(rsp == 353) {
+            event.channel = event.params[1];
+        }
+        else if(rsp == 441) {
+            event.user = event.params[0];
+            event.channel = event.params[1];
+        }
+    }
+    else {
+        if(event.action == 'PRIVMSG') {
+            if('&#!+.~'.indexOf(event.params[0][0]) != -1)
+                event.channel = event.params[0];
+            else
+                event.targetUser = event.params[0];
+        }
+        else if(event.action == 'JOIN' ||
+                event.action == 'PART' ||
+                event.action == 'TOPIC')
+        {
+            event.channel = event.params[0];
+        }
+        else if(event.action == 'KICK') {
+            event.channel = event.params[0];
+            event.targetUser = event.params[1];
+        }
+        else if(event.action == 'NICK') {
+            event.newNick = event.params[1];
+            event.multiChannel = true;
+        }
+        else if(event.action == 'MODE') {
+            event.channel = event.params[0];
+            event.modeChanges = event.params[1];
+            if(event.params.length > 2) {
+                event.targetUsers = event.params.slice(2);
+            }
+        }
+        else if(event.action == 'QUIT') {
+            event.multiChannel = true;
+        }
+
+        if(event.multiChannel) {
+            event.channels = [];
+            var channels = this.connections[event.server].channels;
+            for(var ch in channels) {
+                for(var nick in channels[ch].nicks) {
+                    if(nick == event.user) {
+                        event.channels.append(channels[ch]);
                     }
                 }
             }
         }
-        event.allChannels = this.connections[event.server].channels;
-
-        // Run any pre-emit hooks
-        async.eachSeries(this.preEmitHooks, function(hook, callback) {
-            hook(event, callback);
-        }, function(err) {
-            this.emit(event);
-        }.bind(this));
-
-        console.log('line: ' + message[0]);
+        else if(event.channel && this.connections[event.server].channels[event.channel]) {
+            event.channel = this.connections[event.server].channels[event.channel];
+        }
     }
+
+    // Run any pre-emit hooks
+    async.eachSeries(this.preEmitHooks, function(hook, callback) {
+        hook(event, callback);
+    }, function(err) {
+        this.emit(event);
+    }.bind(this));
 };
 
 JSBot.prototype.addPreEmitHook = function(func) {
@@ -256,7 +255,6 @@ JSBot.prototype.say = function(server, channel, msg) {
     event.server = server;
     event.channel = channel;
     event.msg = msg;
-
     event.reply(msg);
 };
 
@@ -288,7 +286,9 @@ JSBot.prototype.addListener = function(index, tag, func) {
     };
 
     _.each(index, function(type) {
-        if(!_.has(this.events, type)) this.events[type] = [];
+        if(!_.has(this.events, type)) {
+            this.events[type] = [];
+        }
         this.events[type].push(listener);
     }, this);
 };
@@ -322,39 +322,47 @@ JSBot.prototype.removeListeners = function() {
 };
 
 /**
- * Default listeners to handle a channel nicklist.
+ * Default listeners.
  *
  * TODO: I'd like to split this out into its own file, and perhaps it could 
  *  act as a jsbot plugin?
  */
 JSBot.prototype.addDefaultListeners = function() {
+
+//  PING
+//  Self-explanatory
+    this.addListener('PING', 'pong', function(event) {
+        this.connections[event.server].pong(event.message);
+    }.bind(this));
+
+//
+//  353/474 replies
+//  Fills in initial channel/nick info.
+//
+
     this.addListener('353', 'names', function(event) {
-        event.params = event.params.match(/.+? [*|=|@] (#.+?) \:(.+)/);
-
-        event.channel = event.allChannels[event.params[1]];
-        var newNicks = event.params[2].trim().split(' ');
-        var channelNicks = event.channel.nicks;
-
-        for(var i=0;i<newNicks.length;i++) {
-            // remove any user modes the IRCd may have put in the names list
-            // (e.g. @ for op, + for voice)
-            var name = newNicks[i].replace(/[~&@%+]/g, '');
-            channelNicks[name] = {
-                'name': name, 
-                'op': false,
-                'voice': false,
+        var newNicks = event.message.split(' ');
+        for(var i=0; i < newNicks.length; ++i) {
+            var nickMatch = newNicks[i].match(/([~&@%+])(.+)/);
+            event.channel.nicks[name] = {
+                'name': nickMatch[2],
+                'op': nickMatch[1][0] == '@',
+                'voice': nickMatch[1][0] == '+',
                 'toString': function() {
                     return this.name;
                 }
             };
-            if(newNicks[i].indexOf('@') == 0) {
-                channelNicks[name].op = true;
-            }
-            if(newNicks[i].indexOf('+') == 0) {
-                channelNicks[name].voice = true;
-            }
         }
     }.bind(this));
+
+    this.addListener('474', 'banname', function(event) {
+        delete this.connections[event.server].channels[event.channel];
+    }.bind(this));
+
+//
+//  JOIN/PART/KICK/NICK/MODE/QUIT
+//  Adjusts channel/nick info as needed.
+//
 
     this.addListener('JOIN', 'joinname', function(event) {
         if(event.user !== this.nick) {
@@ -369,13 +377,33 @@ JSBot.prototype.addDefaultListeners = function() {
         }
     });
 
+    this.addListener('PART', 'partname', function(event) {
+        var channelNicks = event.channel.nicks;
+        delete channelNicks[event.user];
+    });
+
+    this.addListener('KICK', 'kickname', function(event) {
+        var channelNicks = event.channel.nicks;
+        delete channelNicks[event.user];
+    });
+
+    this.addListener('NICK', 'nickchan', function(event) {
+        _.each(event.allChannels, function(channel) {
+            if(_.has(channel.nicks, event.user)) {
+                channel.nicks[event.newNick] = channel.nicks[event.user];
+                channel.nicks[event.newNick].name = event.newNick;
+                delete channel.nicks[event.user];
+            }
+        });
+    });
+
     this.addListener('MODE', 'modop', function(event) {
         if(!event.modeChanges || !event.targetUsers) {
             return;
         }
 
         var changeSets = event.modeChanges.match(/[+-][ov]+/);
-        if (!changeSets) {
+        if(!changeSets) {
             return;
         }
 
@@ -395,36 +423,14 @@ JSBot.prototype.addDefaultListeners = function() {
         }
     });
 
-    this.addListener('NICK', 'nickchan', function(event) {
-        _.each(event.allChannels, function(channel) {
-            if(_.has(channel.nicks, event.user)) {
-                channel.nicks[event.newNick] = channel.nicks[event.user];
-                channel.nicks[event.newNick].name = event.newNick;
-                delete channel.nicks[event.user];
-            }
-        });
-    });
-
-    this.addListener('474', 'banname', function(event) {
-	delete this.connections[event.server].channels[event.channel];
-    }.bind(this));
-
-    this.addListener('PART', 'partname', function(event) {
-        var channelNicks = event.channel.nicks;
-        delete channelNicks[event.user];
-    });
-
     this.addListener('QUIT', 'quitname', function(event) {
         _.each(event.allChannels, function(channel) {
-            delete channel.nicks[event.user];
+            delete event.channel.nicks[event.user];
         });
     }.bind(this));
-
-    this.addListener('KICK', 'kickname', function(event) {
-        var channelNicks = event.channel.nicks;
-        delete channelNicks[event.user];
-    });
     
+
+
     this.addListener('PRIVMSG', 'ping', function(event) {
         if(event.message.match(/\x01PING .+\x01/) !== null) {
             event.replyNotice(event.message);
@@ -462,12 +468,12 @@ var Connection = function(name, instance, host, port, owner, onReady, nickserv, 
  * constructor.
  */
 Connection.prototype.connect = function() {
-    if((typeof this.port == 'string' || this.port instanceof String) && 
-        this.port.substring(0, 1) == '+') {
+    if((typeof this.port == 'string' || this.port instanceof String) && this.port.substring(0, 1) == '+') {
         this.conn = tls.connect(parseInt(this.port.substring(1)), this.host, this.tlsOptions);
     } else {
         this.conn = net.createConnection(this.port, this.host);
     }
+
     this.conn.setTimeout(60 * 60 * 1000);
     this.conn.setEncoding(this.encoding);
     this.conn.setKeepAlive(enable=true, 10000);
@@ -476,17 +482,24 @@ Connection.prototype.connect = function() {
         this.send('NICK', this.instance.nick);
         this.send('USER', this.instance.nick, '0', '*', this.instance.nick);
     }
+
     this.conn.addListener('connect', connectListener.bind(this));
     this.conn.addListener('secureConnect', connectListener.bind(this));
 
     this.conn.addListener('data', function(chunk) {
-	this.netBuffer += chunk;
-        var ind;
-        while((ind = this.netBuffer.indexOf('\r\n')) != -1) {
-            this.lineBuffer = this.netBuffer.substring(0, ind);
-            this.instance.parse(this, this.lineBuffer);
-            this.netBuffer = this.netBuffer.substring(ind+2);
-        }
+      this.netBuffer += chunk;
+
+      var t = new Tokenizer(this.netBuffer);
+      while(true) {
+          var line = t.tokenize('\r\n');
+          if(line == null)
+              break;
+
+          this.lineBuffer = line;
+          // remove line from buffer and parse
+          this.netBuffer = this.netBuffer.substring(t.pos, -1);
+          this.instance.parse(this, this.lineBuffer);
+      }
     }.bind(this));
 
     setInterval(this.updateNickLists.bind(this), 3600000);
