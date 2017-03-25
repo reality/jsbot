@@ -15,7 +15,15 @@ var JSBot = function(nick) {
     this.connections = {};
     this.ignores = {};
     this.preEmitHooks = [];
-    this.events = {};
+    this.events = {
+        'JOIN': [],
+        'PART': [],
+        'QUIT': [],
+        'NICK': [],
+        'PRIVMSG': [],
+        'MODE': [],
+        'KICK': []
+    };
     this.addDefaultListeners();
 };
 
@@ -313,7 +321,8 @@ JSBot.prototype.removeListeners = function() {
     this.events = {
         'JOIN': [],
         'PART': [],
-        'KICK': [],
+        'QUIT': [],
+        'NICK': [],
         'PRIVMSG': [],
         'MODE': [],
         'KICK': []
