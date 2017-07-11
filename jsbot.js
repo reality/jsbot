@@ -192,6 +192,11 @@ JSBot.prototype.parse = function(connection, input) {
         else if(event.channel && this.connections[event.server].channels[event.channel]) {
             event.channel = this.connections[event.server].channels[event.channel];
         }
+        
+        // Save the phenomenon
+        if(event.message) {
+            event.params = event.message.split(' ');   
+        }
     }
 
     // Run any pre-emit hooks
