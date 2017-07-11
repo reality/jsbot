@@ -191,6 +191,14 @@ JSBot.prototype.parse = function(connection, input) {
         }
         else if(event.channel && this.connections[event.server].channels[event.channel]) {
             event.channel = this.connections[event.server].channels[event.channel];
+        } else {
+            event.channel = { 
+                'name': event.user, 
+                'nicks': {},
+                'toString': function() {
+                    return this.name;
+                }
+            }
         }
         
         // Save the phenomenon
