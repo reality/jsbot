@@ -184,7 +184,7 @@ JSBot.prototype.parse = function(connection, input) {
             for(var ch in channels) {
                 for(var nick in channels[ch].nicks) {
                     if(nick == event.user) {
-                        event.channels.append(channels[ch]);
+                        event.channels.push(channels[ch]);
                     }
                 }
             }
