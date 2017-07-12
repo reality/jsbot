@@ -148,10 +148,10 @@ JSBot.prototype.parse = function(connection, input) {
     }
     else {
         if(event.action == 'PRIVMSG') {
-            if('&#!+.~'.indexOf(event.params[0][0]) != -1)
-                event.channel = event.params[0];
-            else
-                event.targetUser = event.params[0];
+            event.channel = event.params[0];
+            // set targetUser if not /semantically/ a channel (user PRIVMSG)
+            if('&#!+.~'.indexOf(event.channel[0]) == -1)
+                event.targetUser = event.channel;
         }
         else if(event.action == 'JOIN' ||
                 event.action == 'PART' ||
@@ -189,21 +189,8 @@ JSBot.prototype.parse = function(connection, input) {
                 }
             }
         }
-        else if(event.channel && this.connections[event.server].channels[event.channel]) {
+        else if(event.channel && event.channel in this.connections[event.server].channels) {
             event.channel = this.connections[event.server].channels[event.channel];
-        } else {
-            event.channel = { 
-                'name': event.user, 
-                'nicks': {},
-                'toString': function() {
-                    return this.name;
-                }
-            }
-        }
-        
-        // Save the phenomenon
-        if(event.message) {
-            event.params = event.message.split(' ');   
         }
     }
 
