@@ -99,9 +99,9 @@ JSBot.prototype.parse = function(connection, input) {
     }
 
     // split the parameter string
-    event.params = paramsStr.split(' ');
+    event.args = paramsStr.split(' ');
     // use first item as action, remove from list
-    event.action = event.params.shift();
+    event.action = event.args.shift();
 
 //  -- Common Event Variables --
 //  All channel/nick/target parameters in server-to-client events are accounted for here.
@@ -118,61 +118,61 @@ JSBot.prototype.parse = function(connection, input) {
             targetRsps =      [ 407, 437 ];
 
         if(nickRsps.indexOf(rsp) != -1) {
-            event.user = event.params[0];
+            event.user = event.args[0];
         }
         else if(channelRsps.indexOf(rsp) != -1) {
-            event.channel = event.params[0];
+            event.channel = event.args[0];
         }
         else if(channelNickRsps.indexOf(rsp) != -1) {
-            event.channel = event.params[0];
-            event.user = event.params[1];
+            event.channel = event.args[0];
+            event.user = event.args[1];
         }
         else if(targetRsps.indexOf(rsp) != -1) {
-            if ('&#!+.~'.indexOf(event.params[0][0]) != -1) {
-                event.channel = event.params[0];
+            if ('&#!+.~'.indexOf(event.args[0][0]) != -1) {
+                event.channel = event.args[0];
             } else {
-                event.user = event.params[0];
+                event.user = event.args[0];
             }
         }
         else if(rsp == 352) {
-            event.channel = event.params[0];
-            event.user = event.params[4];
+            event.channel = event.args[0];
+            event.user = event.args[4];
         }
         else if(rsp == 353) {
-            event.channel = event.params[2];
+            event.channel = event.args[2];
         }
         else if(rsp == 441) {
-            event.user = event.params[0];
-            event.channel = event.params[1];
+            event.user = event.args[0];
+            event.channel = event.args[1];
         }
     }
     else {
         if(event.action == 'PRIVMSG') {
-            if('&#!+.~'.indexOf(event.params[0][0]) != -1) {
-                event.channel = event.params[0];
+            if('&#!+.~'.indexOf(event.args[0][0]) != -1) {
+                event.channel = event.args[0];
             } else {
-                event.targetUser = event.params[0];
+                event.targetUser = event.args[0];
             }
         }
         else if(event.action == 'JOIN' ||
                 event.action == 'PART' ||
                 event.action == 'TOPIC')
         {
-            event.channel = event.params[0];
+            event.channel = event.args[0];
         }
         else if(event.action == 'KICK') {
-            event.channel = event.params[0];
-            event.targetUser = event.params[1];
+            event.channel = event.args[0];
+            event.targetUser = event.args[1];
        }
         else if(event.action == 'NICK') {
-            event.newNick = event.params[1];
+            event.newNick = event.args[1];
             event.multiChannel = true;
         }
         else if(event.action == 'MODE') {
-            event.channel = event.params[0];
-            event.modeChanges = event.params[1];
-            if(event.params.length > 2) {
-                event.targetUsers = event.params.slice(2);
+            event.channel = event.args[0];
+            event.modeChanges = event.args[1];
+            if(event.args.length > 2) {
+                event.targetUsers = event.args.slice(2);
             }
         }
         else if(event.action == 'QUIT') {
@@ -211,8 +211,11 @@ JSBot.prototype.parse = function(connection, input) {
         this.emit(event);
     }.bind(this));
 
+    // for handlers
     if(event.message) {
         event.params = event.message.split(' ');
+    } else {
+        event.params = [];
     }
 };
 
