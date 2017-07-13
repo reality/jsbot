@@ -150,8 +150,6 @@ JSBot.prototype.parse = function(connection, input) {
         if(event.action == 'PRIVMSG') {
             if('&#!+.~'.indexOf(event.args[0][0]) != -1) {
                 event.channel = event.args[0];
-            } else {
-                event.targetUser = event.args[0];
             }
         }
         else if(event.action == 'JOIN' ||
@@ -195,7 +193,7 @@ JSBot.prototype.parse = function(connection, input) {
         }
         else {
             event.channel = {
-                'name': event.targetUser,
+                'name': event.user,
                 'nicks': {},
                 'toString': function() {
                     return this.name;
