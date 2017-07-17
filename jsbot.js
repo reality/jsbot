@@ -41,13 +41,14 @@ JSBot.prototype.addConnection = function(name, host, port, owner, onReady, nicks
  * Activate a named connection.
  */
 JSBot.prototype.connect = function(name) {
-    this.connections[name].connect();
     var conn = this.connections[name];
-    this.addListener('004', 'onReady', function(event) {
+
+    conn.connect();
+    this.addListener('001', 'onReady', function(event) {
         conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
-        setTimeout(function(){conn.onReady(event);},5000);
-    }.bind(this));
-    conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
+        if(conn.onReady != null)
+            conn.onReady(event);
+    });
 };
 
 /**
@@ -55,7 +56,7 @@ JSBot.prototype.connect = function(name) {
  */
 JSBot.prototype.connectAll = function() {
     _.each(this.connections, function(connection, name) {
-        this.connect(name); 
+        this.connect(name);
     }, this);
 };
 
@@ -271,31 +272,6 @@ JSBot.prototype.removeIgnore = function(item, tag) {
 }
 
 /**
- * Say something in a given server and channel.
- */
-JSBot.prototype.say = function(server, channel, msg) {
-    var event = new Event(this);
-    event.server = server;
-    event.channel = channel;
-    event.msg = msg;
-    event.reply(msg);
-};
-
-/**
- * Reply to an event with a PRIVMSG. Called by the Event.reply.
- */
-JSBot.prototype.reply = function(event, msg) {
-    this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
-};
-
-/**
- * Reply to an event with a NOTICE. Called by the Event.replyNotice.
- */
-JSBot.prototype.replyNotice = function(event, msg) {
-    this.connections[event.server].send('NOTICE', event.user , ':' + msg);
-}
-
-/**
  * Add a listener function for a given event.
  */
 JSBot.prototype.addListener = function(index, tag, func) {
@@ -316,22 +292,6 @@ JSBot.prototype.addListener = function(index, tag, func) {
     }, this);
 };
 
-JSBot.prototype.join = function(event, channel) {
-    this.connections[event.server].join(channel);
-};
-
-JSBot.prototype.part = function(event, channel) {
-    this.connections[event.server].send('PART', channel);
-    delete this.connections[event.server].channels[channel];
-};
-
-JSBot.prototype.mode = function(event, channel, msg) {
-    this.connections[event.server].send('MODE', channel, msg);
-}
-
-/**
- * Remove all of the listeners and reset the map.
- */
 JSBot.prototype.removeListeners = function() {
     this.events = {
         'JOIN': [],
@@ -345,12 +305,37 @@ JSBot.prototype.removeListeners = function() {
     this.addDefaultListeners();
 };
 
-/**
- * Default listeners.
- *
- * TODO: I'd like to split this out into its own file, and perhaps it could
- *  act as a jsbot plugin?
- */
+// base protocol functionality
+
+JSBot.prototype.say = function(server, channel, msg) {
+    var event = new Event(this);
+    event.server = server;
+    event.channel = channel;
+    event.msg = msg;
+    event.reply(msg);
+};
+
+JSBot.prototype.reply = function(event, msg) {
+    this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
+};
+
+JSBot.prototype.replyNotice = function(event, msg) {
+    this.connections[event.server].send('NOTICE', event.user , ':' + msg);
+}
+
+JSBot.prototype.join = function(event, channel) {
+    this.connections[event.server].join(channel);
+};
+
+JSBot.prototype.part = function(event, channel) {
+    this.connections[event.server].send('PART', channel);
+};
+
+JSBot.prototype.mode = function(event, channel, msg) {
+    this.connections[event.server].send('MODE', channel, msg);
+}
+
+// default listeners
 JSBot.prototype.addDefaultListeners = function() {
 
 //  PING
@@ -466,11 +451,8 @@ JSBot.prototype.addDefaultListeners = function() {
     });
 };
 
-///////////////////////////////////////////////////////////////////////////////
+// connections
 
-/**
- * Single connection to an IRC server. Managed by the JSBot object.
- */
 var Connection = function(name, instance, host, port, owner, onReady, nickserv, password, tlsOptions) {
     this.name = name;
     this.instance = instance;
@@ -485,16 +467,11 @@ var Connection = function(name, instance, host, port, owner, onReady, nickserv, 
     this.channels = {};
     this.commands = {};
     this.encoding = 'utf8';
-    this.lineBuffer = '';
     this.netBuffer = '';
     this.conn = null;
     this.lastSent = Date.now();
 };
 
-/**
- * Actually connect to the IRC server with the information given in the
- * constructor.
- */
 Connection.prototype.connect = function() {
     if((typeof this.port == 'string' || this.port instanceof String) && this.port.substring(0, 1) == '+') {
         this.conn = tls.connect(parseInt(this.port.substring(1)), this.host, this.tlsOptions);
@@ -515,43 +492,23 @@ Connection.prototype.connect = function() {
     this.conn.addListener('secureConnect', connectListener.bind(this));
 
     this.conn.addListener('data', function(chunk) {
-      this.netBuffer += chunk;
+        this.netBuffer += chunk;
 
-      var t = new Tokenizer(this.netBuffer);
-      while(true) {
-          var line = t.tokenize('\r\n');
-          if(line == null)
-              break;
+        var t = new Tokenizer(this.netBuffer);
+        while(true) {
+            var line = t.tokenize('\r\n');
+            if(line == null) {
+                this.netBuffer = t.tokenize(null);
+                break;
+            }
 
-          this.lineBuffer = line;
-          // remove line from buffer and parse
-          this.netBuffer = this.netBuffer.substring(t.pos, -1);
-          this.instance.parse(this, this.lineBuffer);
-      }
+            this.instance.parse(this, line);
+        }
     }.bind(this));
 
     setInterval(this.updateNickLists.bind(this), 3600000);
 };
 
-Connection.prototype.updateNickLists = function() {
-    for(var channel in this.channels) {
-        if(_.has(this.channels, channel)) {
-            this.channels[channel] = {
-                'name': channel,
-                'nicks': {},
-                'toString': function() {
-                    return this.name;
-                }
-            };
-            this.send('NAMES ' + channel);
-        }
-    }
-}
-
-/**
- * Takes variable number of arguments, joins them into a string split by spaces
- * and sends to the server.
- */
 Connection.prototype.send = function() {
     var message = [].splice.call(arguments, 0).join(' ');
     //if(Date.now() > this.lastSent + 500) {
@@ -574,13 +531,6 @@ Connection.prototype.pong = function(message) {
 
 Connection.prototype.join = function(channel) {
     this.send('JOIN', channel); 
-    this.channels[channel] = {
-        'name': channel,
-        'nicks': {},
-        'toString': function() {
-            return this.name;
-        }
-    };
 };
 
 ///////////////////////////////////////////////////////////////////////////////
