@@ -132,8 +132,6 @@ JSBot.prototype.parse = function(connection, input) {
     var event = new Event(this),
         t = new Tokenizer(input);
 
-    console.log(input);
-
     event.server = connection.name;
     event.allChannels = this.connections[event.server].channels;
 
@@ -257,6 +255,14 @@ JSBot.prototype.parse = function(connection, input) {
         else if(event.channel && event.channel in event.allChannels) {
             // replace the channel name with it's coresponding object
             event.channel = event.allChannels[event.channel];
+        } else {
+          event.channel = { 
+            'name': event.user, 
+            'nicks': {},
+            'toString': function() {
+              return this.name;
+            }
+          }
         }
     }
 
