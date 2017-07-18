@@ -435,7 +435,7 @@ JSBot.prototype.addDefaultListeners = function() {
                     delete channel.nicks[event.user];
                 }
             }
-        });
+        };
     }.bind(this));
 
     // MODE
