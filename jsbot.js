@@ -132,6 +132,9 @@ JSBot.prototype.parse = function(connection, input) {
     var event = new Event(this),
         t = new Tokenizer(input);
 
+    // uncomment this for debugging. no, really.
+    //console.log(input);
+
     event.server = connection.name;
     event.allChannels = this.connections[event.server].channels;
 
@@ -255,7 +258,8 @@ JSBot.prototype.parse = function(connection, input) {
         else if(event.channel && event.channel in event.allChannels) {
             // replace the channel name with it's coresponding object
             event.channel = event.allChannels[event.channel];
-        } else {
+        }
+        else {
           event.channel = { 
             'name': event.user, 
             'nicks': {},
@@ -390,6 +394,36 @@ JSBot.prototype.addDefaultListeners = function() {
         this.connections[event.server].pong(event.message);
     }.bind(this));
 
+    // 353 replies
+    this.addListener('353', 'names', function(event) {
+        if(_.has(this.connections[event.server].channels, event.channel) == false) {
+            this.connections[event.server].channels[event.channel] = {
+                'name': event.channel,
+                'nicks': {},
+                'toString': function() {
+                    return this.name;
+                }
+            };
+
+            // this only needs to be updated once here, otherwise JSBot.parse() handles it
+            event.channel = this.connections[event.server].channels[event.channel];
+        }
+
+        for(var i=0; i < event.params.length; ++i) {
+            var hasFlag = '~&@%+'.indexOf(event.params[i][0]) != -1,
+                name = hasFlag ? event.params[i].slice(1) : event.params[i];
+
+            event.channel.nicks[name] = {
+                'name': name,
+                'op': hasFlag && event.params[i][0] == '@',
+                'voice': hasFlag && event.params[i][0] == '+',
+                'toString': function() {
+                    return this.name;
+                }
+            };
+        }
+    });
+
     // JOIN
     this.addListener('JOIN', 'joinname', function(event) {
         if(event.user != this.nick) {
@@ -401,6 +435,7 @@ JSBot.prototype.addDefaultListeners = function() {
                     return this.name;
                 }
             };
+
             event.user = this.connections[event.server].channels[event.channel].nicks[event.user];
         }
     }.bind(this));
@@ -454,7 +489,7 @@ JSBot.prototype.addDefaultListeners = function() {
             return;
 
         for(var i=0; i < changeSets.length && i < event.targetUsers.length; ++i) {
-            if(event.targetUsers[i] in event.channel.nicks) {
+            if(_.has(event.channel.nicks, event.targetUsers[i])) {
                 var chanUser = event.channel.nicks[event.targetUsers[i]],
                     prefix = changeSets[i].match(/[+-]/)[0],
                     flags = changeSets[i].match(/[ov]+/)[0],
@@ -467,37 +502,6 @@ JSBot.prototype.addDefaultListeners = function() {
                         chanUser.voice = value;
                 }
             }
-        }
-    });
-
-    // 353 replies
-    this.addListener('353', 'names', function(event) {
-
-        if(!_.has(this.connections[event.server].channels, event.channel)) {
-            this.connections[event.server].channels[event.channel] = {
-                'name': event.channel,
-                'nicks': {},
-                'toString': function() {
-                    return this.name;
-                }
-            };
-
-        }
-
-        event.channel = this.connections[event.server].channels[event.channel];
-
-        for(var i=0; i < event.params.length; ++i) {
-            var hasFlag = '~&@%+'.indexOf(event.params[i][0]) != -1,
-                name = hasFlag ? event.params[i].slice(1) : event.params[i];
-
-            event.channel.nicks[name] = {
-                'name': name,
-                'op': hasFlag && event.params[i][0] == '@',
-                'voice': hasFlag && event.params[i][0] == '+',
-                'toString': function() {
-                    return this.name;
-                }
-            };
         }
     });
 
