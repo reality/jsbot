@@ -13,6 +13,17 @@ code, then head on over to the
 
 ## ChangeLog
 
+### 0.3 I guess
+
+* Fixed an edge case with the IRC line tokenisation /potentially/ causing events to be parsed twice
+* Isolated all core channel/nick list logic in JOIN/PART/KICK/QUIT/NICK handlers
+* Removed useless timeout in 004 handler, switched it to handle 001 instead
+* Removed a duplicate send() call for IDENTIFY
+* Semantically reorganised source code
+* Various other improvements
+
+speeddefrost <3
+
 ### 0.2
 
 * Multiple server support. 
@@ -20,7 +31,7 @@ code, then head on over to the
 * Better 'event' object passed to listeners.
 * Ability to 'reply' to events.
 
-### 0.1: 
+### 0.1
 
 * It connects to a server
 * Listeners

@@ -424,14 +424,19 @@ JSBot.prototype.addDefaultListeners = function() {
 
     // NICK
     this.addListener('NICK', 'nickchan', function(event) {
-        _.each(event.allChannels, function(channel) {
-            if(_.has(channel.nicks, event.user)) {
-                channel.nicks[event.newNick] = channel.nicks[event.user];
-                channel.nicks[event.newNick].name = event.newNick;
-                delete channel.nicks[event.user];
+        if(event.user == this.nick) {
+            this.nick = event.newNick;
+        }
+        else {
+            for(var channel in event.allChannels) {
+                if(event.user in channel.nicks) {
+                    channel.nicks[event.newNick] = channel.nicks[event.user];
+                    channel.nicks[event.newNick].name = event.newNick;
+                    delete channel.nicks[event.user];
+                }
             }
         });
-    });
+    }.bind(this));
 
     // MODE
     this.addListener('MODE', 'modop', function(event) {
