@@ -424,7 +424,7 @@ JSBot.prototype.addDefaultListeners = function() {
     // QUIT
     this.addListener('QUIT', 'quitname', function(event) {
         _.each(event.allChannels, function(channel) {
-            delete event.channel.nicks[event.user];
+            delete event.allChannels[channel].nicks[event.user];
         });
     });
 
@@ -472,7 +472,8 @@ JSBot.prototype.addDefaultListeners = function() {
 
     // 353 replies
     this.addListener('353', 'names', function(event) {
-        if(_.has(this.connections[event.server].channels, event.channel) == false) {
+
+        if(!_.has(this.connections[event.server].channels, event.channel)) {
             this.connections[event.server].channels[event.channel] = {
                 'name': event.channel,
                 'nicks': {},
@@ -480,8 +481,10 @@ JSBot.prototype.addDefaultListeners = function() {
                     return this.name;
                 }
             };
-            event.channel = this.connections[event.server].channels[event.channel];
+
         }
+
+        event.channel = this.connections[event.server].channels[event.channel];
 
         for(var i=0; i < event.params.length; ++i) {
             var hasFlag = '~&@%+'.indexOf(event.params[i][0]) != -1,
