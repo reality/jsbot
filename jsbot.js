@@ -4,12 +4,6 @@ var _ = require('underscore')._,
     tls = require('tls'),
     Tokenizer = require('./tokenizer');
 
-/**
- * Javascript IRC bot library! Deal with it.
- *
- * This class itself manages Connection objects, the event listeners and 
- * provides the client-code interface for the library.
- */
 var JSBot = function(nick) {
     this.nick = nick;
     this.connections = {};
@@ -27,42 +21,113 @@ var JSBot = function(nick) {
     this.addDefaultListeners();
 };
 
-/**
- * Add a new server connection.
- */
+// connections
+
+var Connection = function(name, instance, host, port, owner, onReady, nickserv, password, tlsOptions) {
+    this.name = name;
+    this.instance = instance;
+    this.host = host;
+    this.port = port;
+    this.owner = owner;
+    this.onReady = onReady;
+    this.nickserv = nickserv;
+    this.password = password;
+    this.tlsOptions = tlsOptions;
+
+    this.channels = {};
+    this.commands = {};
+    this.encoding = 'utf8';
+    this.netBuffer = '';
+    this.conn = null;
+    this.lastSent = Date.now();
+};
+
+Connection.prototype.connect = function() {
+    if((typeof this.port == 'string' || this.port instanceof String) && this.port.substring(0, 1) == '+') {
+        this.conn = tls.connect(parseInt(this.port.substring(1)), this.host, this.tlsOptions);
+    } else {
+        this.conn = net.createConnection(this.port, this.host);
+    }
+
+    this.conn.setTimeout(60 * 60 * 1000);
+    this.conn.setEncoding(this.encoding);
+    this.conn.setKeepAlive(enable=true, 10000);
+
+    connectListener = function() {
+        this.send('NICK', this.instance.nick);
+        this.send('USER', this.instance.nick, '0', '*', this.instance.nick);
+    }.bind(this);
+
+    this.conn.addListener('connect', connectListener.bind(this));
+    this.conn.addListener('secureConnect', connectListener.bind(this));
+
+    this.conn.addListener('data', function(chunk) {
+        this.netBuffer += chunk;
+
+        var t = new Tokenizer(this.netBuffer);
+        while(true) {
+            var line = t.tokenize('\r\n');
+            if(line == null) {
+                this.netBuffer = t.tokenize(null);
+                break;
+            }
+
+            this.instance.parse(this, line);
+        }
+    }.bind(this));
+};
+
+Connection.prototype.send = function() {
+    var message = [].splice.call(arguments, 0).join(' ');
+    //if(Date.now() > this.lastSent + 500) {
+        message += '\r\n';
+        this.conn.write(message, this.encoding);
+        this.lastSent = Date.now();
+    //} else {
+    /*    setImmediate(function() {
+            this.send(message);
+        }.bind(this));
+    }*/
+};
+
+Connection.prototype.pong = function(message) {
+    this.send('PONG', ':' + message.split(':')[1]);
+};
+
+Connection.prototype.join = function(channel) {
+    this.send('JOIN', channel);
+};
+
+Connection.prototype.part = function(channel) {
+    this.send('PART', channel);
+};
+
 JSBot.prototype.addConnection = function(name, host, port, owner, onReady, nickserv, password, tlsOptions) {
     tlsOptions = tlsOptions || {};
     tlsOptions = _.defaults(tlsOptions, {rejectUnauthorized: false});
     this.connections[name] = new Connection(name, this, host, port, owner, onReady,
-            nickserv, password, tlsOptions);
+                                            nickserv, password, tlsOptions);
 };
 
-/**
- * Activate a named connection.
- */
 JSBot.prototype.connect = function(name) {
     var conn = this.connections[name];
-
-    conn.connect();
     this.addListener('001', 'onReady', function(event) {
-        conn.instance.say(conn.name, conn.nickserv, 'identify ' + conn.password);
+        conn.instance.say(conn.name, conn.nickserv, 'IDENTIFY ' + this.nick + " " + conn.password);
         if(conn.onReady != null)
             conn.onReady(event);
     });
+
+    conn.connect();
 };
 
-/**
- * Activate all of the connections.
- */
 JSBot.prototype.connectAll = function() {
     _.each(this.connections, function(connection, name) {
         this.connect(name);
     }, this);
 };
 
-/**
- * Take some input and populate an event object.
- */
+// event parsing and processing
+
 JSBot.prototype.parse = function(connection, input) {
     var event = new Event(this),
         t = new Tokenizer(input);
@@ -179,27 +244,19 @@ JSBot.prototype.parse = function(connection, input) {
         }
 
         if(event.multiChannel) {
+            // populate a list of channels this event applies to
             event.channels = [];
-            var channels = this.connections[event.server].channels;
-            for(var ch in channels) {
-                for(var nick in channels[ch].nicks) {
+            for(var ch in event.allChannels) {
+                for(var nick in event.allChannels[ch].nicks) {
                     if(nick == event.user) {
-                        event.channels.push(channels[ch]);
+                        event.channels.push(event.allChannels[ch]);
                     }
                 }
             }
         }
-        else if(event.channel && event.channel in this.connections[event.server].channels) {
-            event.channel = this.connections[event.server].channels[event.channel];
-        }
-        else {
-            event.channel = {
-                'name': event.user,
-                'nicks': {},
-                'toString': function() {
-                    return this.name;
-                }
-            }
+        else if(event.channel && event.channel in event.allChannels) {
+            // replace the channel name with it's coresponding object
+            event.channel = event.allChannels[event.channel];
         }
     }
 
@@ -250,30 +307,46 @@ JSBot.prototype.emit = function(event) {
     }
 };
 
-/**
- * Add a listener tag for an 'item' (channel or user) to ignore.
- */
-JSBot.prototype.ignoreTag = function(item, tag) {
-    if(!_.has(this.ignores, item)) {
-        this.ignores[item] = [];
-    }
+// client functionality
 
-    this.ignores[item].push(tag);
+JSBot.prototype.say = function(server, channel, msg) {
+    var event = new Event(this);
+    event.server = server;
+    event.channel = channel;
+    event.msg = msg;
+    event.reply(msg);
+};
+
+JSBot.prototype.reply = function(event, msg) {
+    this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
+};
+
+JSBot.prototype.act = function(event, msg) {
+    this.connections[event.server].send('PRIVMSG', event.channel, '\001ACTION ' + msg + '\001');
 }
 
-JSBot.prototype.clearIgnores = function() {
-    this.ignores = {};
+JSBot.prototype.replyNotice = function(event, msg) {
+    this.connections[event.server].send('NOTICE', event.user , ':' + msg);
 }
 
-JSBot.prototype.removeIgnore = function(item, tag) {
-    if(_.has(this.ignores, item) && _.include(this.ignores[item], tag)) {
-        this.ignores[item].slice(this.ignores[item].indexOf(tag), 1);
-    }
+JSBot.prototype.join = function(event, channel) {
+    this.connections[event.server].join(channel);
+};
+
+JSBot.prototype.part = function(event, channel) {
+    this.connections[event.server].part(channel);
+};
+
+JSBot.prototype.mode = function(event, channel, msg) {
+    this.connections[event.server].send('MODE', channel, msg);
 }
 
-/**
- * Add a listener function for a given event.
- */
+JSBot.prototype.nick = function(event, nick) {
+    this.connections[event.server].send('NICK', nick);
+}
+
+// listeners
+
 JSBot.prototype.addListener = function(index, tag, func) {
     if(!(index instanceof Array)) {
         index = [index];
@@ -305,52 +378,99 @@ JSBot.prototype.removeListeners = function() {
     this.addDefaultListeners();
 };
 
-// base protocol functionality
-
-JSBot.prototype.say = function(server, channel, msg) {
-    var event = new Event(this);
-    event.server = server;
-    event.channel = channel;
-    event.msg = msg;
-    event.reply(msg);
-};
-
-JSBot.prototype.reply = function(event, msg) {
-    this.connections[event.server].send('PRIVMSG', event.channel, ':' + msg);
-};
-
-JSBot.prototype.replyNotice = function(event, msg) {
-    this.connections[event.server].send('NOTICE', event.user , ':' + msg);
-}
-
-JSBot.prototype.join = function(event, channel) {
-    this.connections[event.server].join(channel);
-};
-
-JSBot.prototype.part = function(event, channel) {
-    this.connections[event.server].send('PART', channel);
-};
-
-JSBot.prototype.mode = function(event, channel, msg) {
-    this.connections[event.server].send('MODE', channel, msg);
-}
-
-// default listeners
 JSBot.prototype.addDefaultListeners = function() {
-
-//  PING
-//  Self-explanatory
+    // PING
     this.addListener('PING', 'pong', function(event) {
         this.connections[event.server].pong(event.message);
     }.bind(this));
 
-//
-//  353/474 replies
-//  Fills in initial channel/nick info.
-//
+    // JOIN
+    this.addListener('JOIN', 'joinname', function(event) {
+        if(event.user != this.nick) {
+            this.connections[event.server].channels[event.channel].nicks[event.user] = {
+                'name': event.user,
+                'op': false,
+                'voice': false,
+                'toString': function() {
+                    return this.name;
+                }
+            };
+            event.user = this.connections[event.server].channels[event.channel].nicks[event.user];
+        }
+    }.bind(this));
 
+    // PART
+    this.addListener('PART', 'partname', function(event) {
+        if(event.user == this.nick)
+            delete this.connections[event.server].channels[event.channel];
+        else
+            delete event.channel.nicks[event.user];
+    }.bind(this));
+
+    // KICK
+    this.addListener('KICK', 'kickname', function(event) {
+        if(event.targetUser == this.nick)
+            delete this.connections[event.server].channels[event.channel];
+        else
+            delete event.channel.nicks[event.user];
+    }.bind(this));
+
+    // QUIT
+    this.addListener('QUIT', 'quitname', function(event) {
+        _.each(event.allChannels, function(channel) {
+            delete event.channel.nicks[event.user];
+        });
+    });
+
+    // NICK
+    this.addListener('NICK', 'nickchan', function(event) {
+        _.each(event.allChannels, function(channel) {
+            if(_.has(channel.nicks, event.user)) {
+                channel.nicks[event.newNick] = channel.nicks[event.user];
+                channel.nicks[event.newNick].name = event.newNick;
+                delete channel.nicks[event.user];
+            }
+        });
+    });
+
+    // MODE
+    this.addListener('MODE', 'modop', function(event) {
+        if(!event.modeChanges || !event.targetUsers)
+            return;
+
+        var changeSets = event.modeChanges.match(/[+-][ov]+/);
+        if(!changeSets)
+            return;
+
+        for(var i=0; i < changeSets.length && i < event.targetUsers.length; ++i) {
+            if(event.targetUsers[i] in event.channel.nicks) {
+                var chanUser = event.channel.nicks[event.targetUsers[i]],
+                    prefix = changeSets[i].match(/[+-]/)[0],
+                    flags = changeSets[i].match(/[ov]+/)[0],
+                    value = prefix == '+';
+
+                for(var f=0; f < flags.length; ++f) {
+                    if(flags[f] == 'o')
+                        chanUser.op = value;
+                    else if(flags[f] == 'v')
+                        chanUser.voice = value;
+                }
+            }
+        }
+    });
+
+    // 353 replies
     this.addListener('353', 'names', function(event) {
-        event.channel = event.allChannels[event.channel];
+        if(_.has(this.connections[event.server].channels, event.channel) == false) {
+            this.connections[event.server].channels[event.channel] = {
+                'name': event.channel,
+                'nicks': {},
+                'toString': function() {
+                    return this.name;
+                }
+            };
+            event.channel = this.connections[event.server].channels[event.channel];
+        }
 
         for(var i=0; i < event.params.length; ++i) {
             var hasFlag = '~&@%+'.indexOf(event.params[i][0]) != -1,
@@ -365,175 +485,33 @@ JSBot.prototype.addDefaultListeners = function() {
                 }
             };
         }
-    }.bind(this));
-
-    this.addListener('474', 'banname', function(event) {
-        delete this.connections[event.server].channels[event.channel];
-    }.bind(this));
-
-//
-//  JOIN/PART/KICK/NICK/MODE/QUIT
-//  Adjusts channel/nick info as needed.
-//
-
-    this.addListener('JOIN', 'joinname', function(event) {
-        if(event.user !== this.nick) {
-            var channelNicks = event.channel.nicks;
-            channelNicks[event.user] = {
-                'name': event.user,
-                'op': false,
-                'toString': function() {
-                    return this.name;
-                }
-            };
-        }
     });
-
-    this.addListener('PART', 'partname', function(event) {
-        var channelNicks = event.channel.nicks;
-        delete channelNicks[event.user];
-    });
-
-    this.addListener('KICK', 'kickname', function(event) {
-        var channelNicks = event.channel.nicks;
-        delete channelNicks[event.user];
-    });
-
-    this.addListener('NICK', 'nickchan', function(event) {
-        _.each(event.allChannels, function(channel) {
-            if(_.has(channel.nicks, event.user)) {
-                channel.nicks[event.newNick] = channel.nicks[event.user];
-                channel.nicks[event.newNick].name = event.newNick;
-                delete channel.nicks[event.user];
-            }
-        });
-    });
-
-    this.addListener('MODE', 'modop', function(event) {
-        if(!event.modeChanges || !event.targetUsers) {
-            return;
-        }
-
-        var changeSets = event.modeChanges.match(/[+-][ov]+/);
-        if(!changeSets) {
-            return;
-        }
-
-        for(var i=0; i < changeSets.length && i < event.targetUsers.length; ++i) {
-            if(event.targetUsers[i] in event.channel.nicks) {
-                var chanUser = event.channel.nicks[event.targetUsers[i]],
-                    prefix = changeSets[i].match(/[+-]/)[0],
-                    flags = changeSets[i].match(/[ov]+/)[0],
-                    value = prefix == '+';
-
-                for(var f=0; f < flags.length; ++f) {
-                    if(flags[f] == 'o') {
-                        chanUser.op = value;
-                    } else if(flags[f] == 'v') {
-                        chanUser.voice = value;
-                    }
-                }
-            }
-        }
-    });
-
-    this.addListener('QUIT', 'quitname', function(event) {
-        _.each(event.allChannels, function(channel) {
-            delete event.channel.nicks[event.user];
-        });
-    }.bind(this));
-
 
     this.addListener('PRIVMSG', 'ping', function(event) {
-        if(event.message.match(/\x01PING .+\x01/) !== null) {
+        if(event.message.match(/\x01PING .+\x01/) != null)
             event.replyNotice(event.message);
-        }
     });
 };
 
-// connections
+// ignore functionality
 
-var Connection = function(name, instance, host, port, owner, onReady, nickserv, password, tlsOptions) {
-    this.name = name;
-    this.instance = instance;
-    this.host = host;
-    this.port = port;
-    this.owner = owner;
-    this.onReady = onReady;
-    this.nickserv = nickserv;
-    this.password = password;
-    this.tlsOptions = tlsOptions;
+JSBot.prototype.ignoreTag = function(item, tag) {
+    if(_.has(this.ignores, item) == false)
+        this.ignores[item] = [];
 
-    this.channels = {};
-    this.commands = {};
-    this.encoding = 'utf8';
-    this.netBuffer = '';
-    this.conn = null;
-    this.lastSent = Date.now();
-};
+    this.ignores[item].push(tag);
+}
 
-Connection.prototype.connect = function() {
-    if((typeof this.port == 'string' || this.port instanceof String) && this.port.substring(0, 1) == '+') {
-        this.conn = tls.connect(parseInt(this.port.substring(1)), this.host, this.tlsOptions);
-    } else {
-        this.conn = net.createConnection(this.port, this.host);
-    }
+JSBot.prototype.clearIgnores = function() {
+    this.ignores = {};
+}
 
-    this.conn.setTimeout(60 * 60 * 1000);
-    this.conn.setEncoding(this.encoding);
-    this.conn.setKeepAlive(enable=true, 10000);
+JSBot.prototype.removeIgnore = function(item, tag) {
+    if(_.has(this.ignores, item) && _.include(this.ignores[item], tag))
+        this.ignores[item].slice(this.ignores[item].indexOf(tag), 1);
+}
 
-    connectListener = function() {
-        this.send('NICK', this.instance.nick);
-        this.send('USER', this.instance.nick, '0', '*', this.instance.nick);
-    }
-
-    this.conn.addListener('connect', connectListener.bind(this));
-    this.conn.addListener('secureConnect', connectListener.bind(this));
-
-    this.conn.addListener('data', function(chunk) {
-        this.netBuffer += chunk;
-
-        var t = new Tokenizer(this.netBuffer);
-        while(true) {
-            var line = t.tokenize('\r\n');
-            if(line == null) {
-                this.netBuffer = t.tokenize(null);
-                break;
-            }
-
-            this.instance.parse(this, line);
-        }
-    }.bind(this));
-
-    setInterval(this.updateNickLists.bind(this), 3600000);
-};
-
-Connection.prototype.send = function() {
-    var message = [].splice.call(arguments, 0).join(' ');
-    //if(Date.now() > this.lastSent + 500) {
-        message += '\r\n';
-        this.conn.write(message, this.encoding);
-        this.lastSent = Date.now();
-    //} else {
-    /*    setImmediate(function() {
-            this.send(message);
-        }.bind(this));
-    }*/
-};
-
-/**
- * Send a pong response to a ping from the server.
- */
-Connection.prototype.pong = function(message) {
-    this.send('PONG', ':' + message.split(':')[1]);
-};
-
-Connection.prototype.join = function(channel) {
-    this.send('JOIN', channel); 
-};
-
-///////////////////////////////////////////////////////////////////////////////
+// events
 
 var Event = function(instance) {
     this.instance = instance;
@@ -547,7 +525,7 @@ Event.prototype.replyNotice = function(msg) {
     this.instance.replyNotice(this, msg);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+// export that shit
 
 exports.createJSBot = function(name) {
     return new JSBot(name);
