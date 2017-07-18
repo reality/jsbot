@@ -454,7 +454,7 @@ JSBot.prototype.addDefaultListeners = function() {
 
     this.addListener('QUIT', 'quitname', function(event) {
         _.each(event.allChannels, function(channel) {
-            delete event.channel.nicks[event.user];
+            delete channel.nicks[event.user];
         });
     }.bind(this));
 
