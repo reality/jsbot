@@ -389,11 +389,6 @@ JSBot.prototype.removeListeners = function() {
 };
 
 JSBot.prototype.addDefaultListeners = function() {
-    // PING
-    this.addListener('PING', 'pong', function(event) {
-        this.connections[event.server].pong(event.message);
-    }.bind(this));
-
     // 353 replies
     this.addListener('353', 'names', function(event) {
         if(_.has(this.connections[event.server].channels, event.channel) == false) {
@@ -423,6 +418,11 @@ JSBot.prototype.addDefaultListeners = function() {
             };
         }
     });
+
+    // PING
+    this.addListener('PING', 'pong', function(event) {
+        this.connections[event.server].pong(event.message);
+    }.bind(this));
 
     // JOIN
     this.addListener('JOIN', 'joinname', function(event) {
