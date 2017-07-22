@@ -418,7 +418,7 @@ JSBot.prototype.addDefaultListeners = function() {
         if(event.targetUser == this.nick)
             delete this.connections[event.server].channels[event.channel];
         else
-            delete event.channel.nicks[event.user];
+            delete event.channel.nicks[event.targetUser];
     }.bind(this));
 
     // QUIT
