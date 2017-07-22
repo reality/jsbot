@@ -13,7 +13,12 @@ code, then head on over to the
 
 ## ChangeLog
 
-### 0.3 I guess
+### 0.4
+
+* Fixed race condition (Make handlers execute in proper order).
+* More handler improvements.
+
+### 0.3
 
 * Fixed an edge case with the IRC line tokenisation /potentially/ causing events to be parsed twice
 * Isolated all core channel/nick list logic in JOIN/PART/KICK/QUIT/NICK handlers
