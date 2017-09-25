@@ -393,6 +393,7 @@ JSBot.prototype.addDefaultListeners = function() {
     // JOIN
     this.addListener('JOIN', 'joinname', function(event) {
         if(event.user != this.nick) {
+          if(!_.has(this.connections[event.server].channels[event.channel].nicks, event.user)) {
             this.connections[event.server].channels[event.channel].nicks[event.user] = {
                 'name': event.user,
                 'op': false,
@@ -401,7 +402,9 @@ JSBot.prototype.addDefaultListeners = function() {
                     return this.name;
                 }
             };
-            event.user = this.connections[event.server].channels[event.channel].nicks[event.user];
+          }
+
+          event.user = this.connections[event.server].channels[event.channel].nicks[event.user];
         }
     }.bind(this));
 
@@ -431,16 +434,17 @@ JSBot.prototype.addDefaultListeners = function() {
     // NICK
     this.addListener('NICK', 'nickchan', function(event) {
         if(event.user == this.nick) {
-            this.nick = event.newNick;
-        }
-        else {
-            for(var channel in event.allChannels) {
+            this.nick = event.message;
+        } else {
+          _.each(event.allChannels, function(channel) {
+              if(_.has(channel, 'nicks')) {
                 if(event.user in channel.nicks) {
-                    channel.nicks[event.newNick] = channel.nicks[event.user];
-                    channel.nicks[event.newNick].name = event.newNick;
+                    channel.nicks[event.message] = channel.nicks[event.user];
+                    channel.nicks[event.message].name = event.message;
                     delete channel.nicks[event.user];
                 }
-            }
+              }
+          });
         }
     }.bind(this));
 
@@ -454,20 +458,31 @@ JSBot.prototype.addDefaultListeners = function() {
             return;
 
         for(var i=0; i < changeSets.length && i < event.targetUsers.length; ++i) {
-            if(event.targetUsers[i] in event.channel.nicks) {
                 var chanUser = event.channel.nicks[event.targetUsers[i]],
                     prefix = changeSets[i].match(/[+-]/)[0],
                     flags = changeSets[i].match(/[ov]+/)[0],
                     value = prefix == '+';
+if(!chanUser) {
+            event.channel.nicks[event.targetUsers[i]] = {
+                'name': event.targetUsers[i],
+                'op': false,
+                'voice': false,
+                'toString': function() {
+                    return this.name;
+                }
+            };
+            chanUser = event.channel.nicks[event.targetUsers[i]];
+}
 
                 for(var f=0; f < flags.length; ++f) {
-                    if(flags[f] == 'o')
+                    if(flags[f] == 'o') {
                         chanUser.op = value;
+                        console.log('set ' + chanUser + ' to ' + value);
+                    }
                     else if(flags[f] == 'v')
                         chanUser.voice = value;
                 }
             }
-        }
     });
 
     // 353 replies
